@@ -595,3 +595,79 @@ select {
   color: #fff;
   background: linear-gradient(135deg, var(--accent), #b44bff);
 }
+
+/* writing-style questionnaire */
+.quiz {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.quiz .q {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.quiz .q.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.quiz .q.two > * {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.quiz b {
+  font-weight: 600;
+  font-size: 13.5px;
+}
+.quiz .inp {
+  width: 100%;
+}
+.quiz .inp.wide {
+  max-width: 360px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chips button {
+  padding: 7px 13px;
+  border-radius: 99px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.chips button:hover {
+  border-color: var(--faint);
+}
+.chips button.on {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+
+/* tone reading */
+.tone-card .row-flex {
+  align-items: center;
+  gap: 16px;
+}
+.tone-strip {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+.tone-dot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.tone-dot small {
+  font-size: 11px;
+  color: var(--muted);
+}

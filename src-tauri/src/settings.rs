@@ -75,6 +75,73 @@ impl Default for VoiceSettings {
     }
 }
 
+/// "How do you write?" answers, turned into guidance for every AI request.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct WritingProfile {
+    pub name: String,
+    /// What they do, e.g. "product designer at a small agency".
+    pub role: String,
+    /// "casual" | "friendly" | "professional" | "formal" (empty = no preference)
+    pub tone: String,
+    /// "brief" | "balanced" | "detailed"
+    pub length: String,
+    /// "us" | "uk"
+    pub spelling: String,
+    /// "never" | "sometimes" | "often"
+    pub emoji: String,
+    /// How they sign off emails, e.g. "Cheers, Dan".
+    pub sign_off: String,
+    /// Anything else Tally should know.
+    pub extra: String,
+}
+
+impl WritingProfile {
+    /// Plain-English guidance for the AI; empty when nothing's been filled in.
+    pub fn guidance(&self) -> String {
+        let mut lines: Vec<String> = Vec::new();
+        let who = match (self.name.trim(), self.role.trim()) {
+            ("", "") => String::new(),
+            (n, "") => format!("The user's name is {n}."),
+            ("", r) => format!("The user is a {r}."),
+            (n, r) => format!("The user is {n}, a {r}."),
+        };
+        if !who.is_empty() {
+            lines.push(who);
+        }
+        match self.tone.as_str() {
+            "casual" => lines.push("Write casually, like texting a friend.".into()),
+            "friendly" => lines.push("Write in a warm, friendly way.".into()),
+            "professional" => lines.push("Write in a clear, professional way.".into()),
+            "formal" => lines.push("Write formally and politely.".into()),
+            _ => {}
+        }
+        match self.length.as_str() {
+            "brief" => lines.push("Keep things short and to the point.".into()),
+            "detailed" => lines.push("It's fine to be thorough and detailed.".into()),
+            _ => {}
+        }
+        match self.spelling.as_str() {
+            "uk" => lines.push("Use British spelling.".into()),
+            "us" => lines.push("Use American spelling.".into()),
+            _ => {}
+        }
+        match self.emoji.as_str() {
+            "never" => lines.push("Never use emojis.".into()),
+            "sometimes" => lines.push("An emoji now and then is fine in casual messages.".into()),
+            "often" => lines.push("Feel free to use emojis.".into()),
+            _ => {}
+        }
+        if !self.sign_off.trim().is_empty() {
+            lines.push(format!("When writing an email or letter, sign off as: {}", self.sign_off.trim()));
+        }
+        if !self.extra.trim().is_empty() {
+            lines.push(format!("More about the user: {}", self.extra.trim()));
+        }
+        lines.join(" ")
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
@@ -88,6 +155,7 @@ pub struct Settings {
     pub onboarded: bool,
     pub ai: AiSettings,
     pub voice: VoiceSettings,
+    pub profile: WritingProfile,
 }
 
 impl Default for Settings {
@@ -105,6 +173,7 @@ impl Default for Settings {
             onboarded: false,
             ai: AiSettings::default(),
             voice: VoiceSettings::default(),
+            profile: WritingProfile::default(),
         }
     }
 }
@@ -114,10 +183,15 @@ fn path(dir: &PathBuf) -> PathBuf {
 }
 
 pub fn load(dir: &PathBuf) -> Settings {
-    std::fs::read_to_string(path(dir))
+    let mut s: Settings = std::fs::read_to_string(path(dir))
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
+        .unwrap_or_default();
+    // The old single "writing style" box moves into the questionnaire's free-text answer.
+    if !s.ai.style.trim().is_empty() && s.profile.extra.trim().is_empty() {
+        s.profile.extra = std::mem::take(&mut s.ai.style);
+    }
+    s
 }
 
 pub fn save(dir: &PathBuf, settings: &Settings) -> anyhow::Result<()> {

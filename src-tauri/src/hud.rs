@@ -20,7 +20,8 @@ pub enum HudState {
     Listening { ai: bool, context_words: usize, hands_free: bool },
     Transcribing { ai: bool },
     Thinking { instruction: String, context_words: usize, tone: Option<crate::voice::tone::Tone> },
-    Done { message: String },
+    /// Finished; `tone` is how the user sounded, when tone awareness heard it.
+    Done { message: String, tone: Option<crate::voice::tone::Tone> },
     Error { message: String },
 }
 

@@ -2,12 +2,13 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { useState } from "react";
 import { keyLabels, type DictationStyle, type Status } from "../lib/api";
 import { Tally } from "../tally/Tally";
-import { AiEngine, Permissions, ToneAwareness, Toggle, useSettings, VoiceModel } from "./parts";
+import { AiEngine, Permissions, ToneAwareness, ToneReading, Toggle, useSettings, VoiceModel, WritingStyle } from "./parts";
 
 const PAGES = [
   { id: "general", label: "General", icon: "⚙️" },
   { id: "voice", label: "Voice", icon: "🎙" },
   { id: "smarts", label: "Smarts", icon: "🧠" },
+  { id: "style", label: "Your style", icon: "✍️" },
   { id: "ai", label: "AI engine", icon: "✨" },
   { id: "about", label: "About", icon: "👋" },
 ] as const;
@@ -168,7 +169,21 @@ export default function SettingsView({ status, refresh }: { status: Status; refr
                 <Toggle label="Notice my tone" on={s.voice.tone_awareness} onChange={(v) => save((x) => ({ ...x, voice: { ...x.voice, tone_awareness: v } }))} />
               </div>
             </div>
+            <h3>How you've sounded</h3>
+            <ToneReading status={status} />
             <ToneAwareness status={status} refresh={refresh} />
+          </>
+        )}
+
+        {page === "style" && (
+          <>
+            <div className="buddy small">
+              <Tally size={48} mood="pointing" paper="butter" tilt={-5} />
+              <div className="bubble">Tell me a little about how you write, and everything I write for you will sound like you.</div>
+            </div>
+            <h2>Your style</h2>
+            <p className="lead">All optional. Skip anything you don't care about; Tally uses what you fill in for every Ask AI request and Polished dictation.</p>
+            <WritingStyle status={status} refresh={refresh} />
           </>
         )}
 
@@ -177,13 +192,6 @@ export default function SettingsView({ status, refresh }: { status: Status; refr
             <h2>AI engine</h2>
             <p className="lead">Who answers when you hold {keys.talk} + {keys.ai}.</p>
             <AiEngine status={status} refresh={refresh} />
-            <h3>Your writing style</h3>
-            <textarea
-              className="style"
-              placeholder="e.g. Casual and concise. British spelling. No emojis."
-              defaultValue={s.ai.style}
-              onBlur={(e) => save((x) => ({ ...x, ai: { ...x.ai, style: e.target.value } }))}
-            />
           </>
         )}
 

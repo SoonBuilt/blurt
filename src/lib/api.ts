@@ -10,8 +10,9 @@ const mock: Record<string, unknown> = {
       ai: { provider: "apple", ollama_url: "http://localhost:11434", ollama_model: "llama3.2:3b", anthropic_model: "claude-opus-5",
         openai_url: "https://api.openai.com/v1", openai_model: "gpt-5-mini", style: "" },
       voice: { tone_awareness: true, hands_free: true, memory: true },
+      profile: { name: "", role: "", tone: "", length: "", spelling: "", emoji: "", sign_off: "", extra: "" },
     },
-    modelDownloaded: false, toneReady: false, accessibility: false, microphone: "unknown", appleAi: "", hasAnthropicKey: false, hasOpenaiKey: false,
+    modelDownloaded: false, toneReady: false, recentTones: [["calm", 40], ["frustrated", 300], ["upbeat", 900]], accessibility: false, microphone: "unknown", appleAi: "", hasAnthropicKey: false, hasOpenaiKey: false,
   },
   test_ai: "Hey there, lovely to meet you!",
 };
@@ -41,6 +42,17 @@ export type VoiceSettings = {
 
 export type Pack = "speech" | "tone";
 
+export type WritingProfile = {
+  name: string;
+  role: string;
+  tone: "" | "casual" | "friendly" | "professional" | "formal";
+  length: "" | "brief" | "balanced" | "detailed";
+  spelling: "" | "us" | "uk";
+  emoji: "" | "never" | "sometimes" | "often";
+  sign_off: string;
+  extra: string;
+};
+
 export type Settings = {
   talk_key: string;
   ai_modifier: string;
@@ -50,6 +62,7 @@ export type Settings = {
   onboarded: boolean;
   ai: AiSettings;
   voice: VoiceSettings;
+  profile: WritingProfile;
 };
 
 export type Status = {
@@ -57,6 +70,8 @@ export type Status = {
   settings: Settings;
   modelDownloaded: boolean;
   toneReady: boolean;
+  /** Newest first: [tone, seconds ago]. */
+  recentTones: [import("./tone").Tone, number][];
   accessibility: boolean;
   microphone: "allowed" | "denied" | "restricted" | "unknown";
   appleAi: string;

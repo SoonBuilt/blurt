@@ -1,5 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef, useState } from "react";
+import { TONE_LOOK, type Tone } from "../lib/tone";
 import { Tally, type TallyMood, type TallyPaper } from "../tally/Tally";
 
 type HudState =
@@ -7,17 +8,8 @@ type HudState =
   | { state: "listening"; ai: boolean; contextWords: number; handsFree: boolean }
   | { state: "transcribing"; ai: boolean }
   | { state: "thinking"; instruction: string; contextWords: number; tone: Tone | null }
-  | { state: "done"; message: string }
+  | { state: "done"; message: string; tone: Tone | null }
   | { state: "error"; message: string };
-
-type Tone = "frustrated" | "upbeat" | "down" | "anxious" | "surprised";
-const TONE_CHIP: Record<Tone, string> = {
-  frustrated: "😮‍💨 keeping it calm",
-  upbeat: "✨ matching your energy",
-  down: "🫶 going gently",
-  anxious: "🫶 keeping it simple",
-  surprised: "😮 noted",
-};
 
 const BARS = 18;
 const isMac = navigator.userAgent.includes("Mac");
@@ -97,15 +89,32 @@ export default function Hud() {
           <span className="lbl">On it…</span>
           <span className="chip" title={s.instruction}>“{s.instruction}”</span>
           {s.contextWords > 0 && <span className="chip ctx">📎 {s.contextWords} words</span>}
-          {s.tone && <span className="chip tone">{TONE_CHIP[s.tone]}</span>}
+          {s.tone && s.tone !== "calm" && (
+            <span className="chip tone">
+              {TONE_LOOK[s.tone].emoji} {TONE_LOOK[s.tone].doing}
+            </span>
+          )}
         </>
       );
       break;
-    case "done":
-      mood = "ready";
+    case "done": {
+      const look = s.tone ? TONE_LOOK[s.tone] : null;
+      mood = look ? look.mood : "ready";
+      paper = look?.paper;
       anim = "pop";
-      body = <span className="lbl">✓ {s.message}</span>;
+      body = (
+        <>
+          <span className="lbl">✓ {s.message}</span>
+          {look && (
+            <span className="chip tone">
+              {look.emoji} {look.heard.toLowerCase()}
+              {s.tone !== "calm" && <span className="doing"> · {look.doing}</span>}
+            </span>
+          )}
+        </>
+      );
       break;
+    }
     case "error":
       mood = "needs";
       anim = "pop";

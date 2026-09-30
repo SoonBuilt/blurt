@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api, keyLabels, type Status } from "../lib/api";
 import { Tally, type TallyMood, type TallyPaper } from "../tally/Tally";
-import { AiEngine, Permissions, VoiceModel } from "./parts";
+import { AiEngine, Permissions, VoiceModel, WritingStyle } from "./parts";
 
 type Step = { id: string; title: string };
 
@@ -13,6 +13,7 @@ export default function Onboarding({ status, refresh, onDone }: { status: Status
     ...(mac ? [{ id: "perms", title: "Permissions" }] : []),
     { id: "voice", title: "Voice model" },
     { id: "ai", title: "AI engine" },
+    { id: "style", title: "Your style" },
     { id: "try", title: "Try it" },
   ];
   const [i, setI] = useState(0);
@@ -28,6 +29,7 @@ export default function Onboarding({ status, refresh, onDone }: { status: Status
       ? { mood: "ready", say: "Got it! I can hear you now.", anim: "pop" }
       : { mood: "pointing", paper: "sky", say: "This is how I learn to hear you. It stays on your computer." },
     ai: { mood: "pointing", paper: "lilac", say: <>Add <b>{keys.ai}</b> while you talk and I'll use AI. Pick who does the thinking.</> },
+    style: { mood: "pointing", paper: "butter", say: "Tell me how you write, and I'll sound like you. All optional." },
     try: { mood: "listening", paper: "butter", anim: "bob", say: "Go on, say something. I'm listening." },
   };
   const b = buddy[step];
@@ -100,6 +102,14 @@ export default function Onboarding({ status, refresh, onDone }: { status: Status
           </>
         )}
 
+        {step === "style" && (
+          <>
+            <h1>How do you write?</h1>
+            <p className="lead">A few quick questions so Tally's writing sounds like you. Skip any of them; you can change this later in Settings.</p>
+            <WritingStyle status={status} refresh={refresh} />
+          </>
+        )}
+
         {step === "try" && (
           <>
             <h1>Try it now</h1>
@@ -121,7 +131,7 @@ export default function Onboarding({ status, refresh, onDone }: { status: Status
           )}
           {i < steps.length - 1 ? (
             <button className="big pri" disabled={!canContinue} onClick={() => setI(i + 1)}>
-              {step === "welcome" ? "Get started →" : step === "ai" ? "Continue →" : "Continue →"}
+              {step === "welcome" ? "Get started →" : step === "style" ? "Continue (or skip) →" : "Continue →"}
             </button>
           ) : (
             <button

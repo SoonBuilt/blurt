@@ -28,6 +28,8 @@ struct Status {
     settings: Settings,
     model_downloaded: bool,
     tone_ready: bool,
+    /// Newest first: (tone, seconds ago).
+    recent_tones: Vec<(voice::tone::Tone, u64)>,
     accessibility: bool,
     microphone: &'static str,
     /// Empty when Apple Intelligence is ready.
@@ -49,6 +51,7 @@ fn get_status(engine: State<Arc<Engine>>) -> Status {
         settings: engine.settings.read().clone(),
         model_downloaded: models::is_ready(&engine.data_dir, models::Pack::Speech),
         tone_ready: models::is_ready(&engine.data_dir, models::Pack::Tone),
+        recent_tones: engine.recent_tones.lock().iter().rev().map(|(t, at)| (*t, at.elapsed().as_secs())).collect(),
         accessibility: accessibility_granted(),
         microphone: apple::mic_status(),
         apple_ai: apple::status(),
@@ -87,8 +90,11 @@ fn set_api_key(provider: AiProvider, key: String) -> Result<(), String> {
 
 #[tauri::command]
 async fn test_ai(engine: State<'_, Arc<Engine>>) -> Result<String, String> {
-    let s = engine.settings.read().ai.clone();
-    ai::ask(&s, "Say hi to the user in one short, friendly sentence.", None, None, None)
+    let (s, profile) = {
+        let st = engine.settings.read();
+        (st.ai.clone(), st.profile.clone())
+    };
+    ai::ask(&s, &profile, "Say hi to the user in one short, friendly sentence.", None, None, None)
         .await
         .map_err(|e| e.to_string())
 }

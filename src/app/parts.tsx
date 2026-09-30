@@ -1,6 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
-import { api, type AiProvider, type Pack, type Settings, type Status } from "../lib/api";
+import { api, type AiProvider, type Pack, type Settings, type Status, type WritingProfile } from "../lib/api";
+import { ago, TONE_LOOK } from "../lib/tone";
 import { Tally } from "../tally/Tally";
 
 export function useSettings(status: Status, refresh: () => void) {
@@ -315,6 +316,141 @@ export function AiEngine({ status, refresh }: { status: Status; refresh: () => v
         )}
         {test.state === "err" && <span className="err">{test.text}</span>}
       </div>
+    </div>
+  );
+}
+
+/* ---------------- How you write ---------------- */
+
+type Choice<T extends string> = { v: T; l: string };
+
+function Chips<T extends string>({ value, options, onPick }: { value: T; options: Choice<T>[]; onPick: (v: T) => void }) {
+  return (
+    <div className="chips" role="radiogroup">
+      {options.map((o) => (
+        <button key={o.v} role="radio" aria-checked={value === o.v} className={value === o.v ? "on" : ""} onClick={() => onPick(value === o.v ? ("" as T) : o.v)}>
+          {o.l}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** "How do you write?" A short questionnaire that shapes every AI answer. */
+export function WritingStyle({ status, refresh }: { status: Status; refresh: () => void }) {
+  const save = useSettings(status, refresh);
+  const p = status.settings.profile;
+  const set = <K extends keyof WritingProfile>(k: K, v: WritingProfile[K]) => save((x) => ({ ...x, profile: { ...x.profile, [k]: v } }));
+
+  return (
+    <div className="quiz">
+      <div className="q two">
+        <label>
+          <b>What should Tally call you?</b>
+          <input className="inp" placeholder="e.g. Danish" defaultValue={p.name} onBlur={(e) => set("name", e.target.value.trim())} />
+        </label>
+        <label>
+          <b>What do you do?</b>
+          <input className="inp" placeholder="e.g. product designer at a small studio" defaultValue={p.role} onBlur={(e) => set("role", e.target.value.trim())} />
+        </label>
+      </div>
+      <div className="q">
+        <b>How do you usually sound?</b>
+        <Chips
+          value={p.tone}
+          onPick={(v) => set("tone", v)}
+          options={[
+            { v: "casual", l: "😎 Casual" },
+            { v: "friendly", l: "😊 Friendly" },
+            { v: "professional", l: "💼 Professional" },
+            { v: "formal", l: "🎩 Formal" },
+          ]}
+        />
+      </div>
+      <div className="q">
+        <b>How long should things be?</b>
+        <Chips
+          value={p.length}
+          onPick={(v) => set("length", v)}
+          options={[
+            { v: "brief", l: "Short and sweet" },
+            { v: "balanced", l: "Balanced" },
+            { v: "detailed", l: "Thorough" },
+          ]}
+        />
+      </div>
+      <div className="q two">
+        <div>
+          <b>Spelling</b>
+          <Chips
+            value={p.spelling}
+            onPick={(v) => set("spelling", v)}
+            options={[
+              { v: "us", l: "🇺🇸 American" },
+              { v: "uk", l: "🇬🇧 British" },
+            ]}
+          />
+        </div>
+        <div>
+          <b>Emojis</b>
+          <Chips
+            value={p.emoji}
+            onPick={(v) => set("emoji", v)}
+            options={[
+              { v: "never", l: "Never" },
+              { v: "sometimes", l: "Sometimes" },
+              { v: "often", l: "Love them" },
+            ]}
+          />
+        </div>
+      </div>
+      <label className="q">
+        <b>How do you sign off emails?</b>
+        <input className="inp wide" placeholder="e.g. Cheers, Dan" defaultValue={p.sign_off} onBlur={(e) => set("sign_off", e.target.value.trim())} />
+      </label>
+      <label className="q">
+        <b>Anything else Tally should know?</b>
+        <span className="hint">Your company, people you often write to, words you love or hate, how to spell your product names…</span>
+        <textarea
+          className="style"
+          placeholder="e.g. I run soonbuilt, a small product studio. Sara is our designer. Never say “synergy”."
+          defaultValue={p.extra}
+          onBlur={(e) => set("extra", e.target.value.trim())}
+        />
+      </label>
+    </div>
+  );
+}
+
+/* ---------------- How you've sounded ---------------- */
+
+export function ToneReading({ status }: { status: Status }) {
+  const recent = status.recentTones;
+  const latest = recent[0];
+  const look = latest ? TONE_LOOK[latest[0]] : null;
+  return (
+    <div className="card tone-card">
+      <div className="row-flex">
+        <Tally size={52} mood={look?.mood ?? "hello"} paper={look?.paper ?? "peach"} tilt={-5} />
+        <div className="grow">
+          <b>{look ? `Last time you sounded: ${look.heard.toLowerCase()} ${look.emoji}` : "Tally hasn't heard you yet"}</b>
+          <span>
+            {latest
+              ? `${ago(latest[1])}. Tally shows this after you speak, and Ask AI adjusts: ${look?.doing}.`
+              : "Once the tone download is in and you talk to Tally, your mood shows up here and after each recording."}
+          </span>
+        </div>
+      </div>
+      {recent.length > 1 && (
+        <div className="tone-strip" aria-label="Recent tones, newest first">
+          {recent.map(([t, s], i) => (
+            <span key={i} className="tone-dot" title={`${TONE_LOOK[t].heard} · ${ago(s)}`}>
+              <Tally size={26} mood={TONE_LOOK[t].mood} paper={TONE_LOOK[t].paper} tape={false} shadow={false} tilt={i % 2 ? 4 : -4} />
+              <small>{TONE_LOOK[t].heard}</small>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -16,6 +16,8 @@ const MIN_CONFIDENCE: f32 = 0.6;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Tone {
+    /// Clearly neutral: shown to the user, but doesn't change how the AI writes.
+    Calm,
     Frustrated,
     Upbeat,
     Down,
@@ -27,6 +29,7 @@ impl Tone {
     /// How the AI should hear it: plain words it can act on.
     pub fn describe(self) -> &'static str {
         match self {
+            Tone::Calm => "calm",
             Tone::Frustrated => "frustrated or annoyed",
             Tone::Upbeat => "upbeat and happy",
             Tone::Down => "down or sad",
@@ -130,6 +133,7 @@ impl ToneDetector {
             "sad" => Some(Tone::Down),
             "fearful" => Some(Tone::Anxious),
             "surprised" => Some(Tone::Surprised),
+            "neutral" => Some(Tone::Calm),
             _ => None,
         }
     }

@@ -1,6 +1,6 @@
 //! "Ask AI": the user's spoken words are the prompt, highlighted text is the context.
 
-use crate::settings::{AiProvider, AiSettings};
+use crate::settings::{AiProvider, AiSettings, WritingProfile};
 use serde_json::{json, Value};
 use std::time::Duration;
 
@@ -53,6 +53,7 @@ pub fn set_api_key(provider: AiProvider, key: &str) -> anyhow::Result<()> {
 /// sounded, when Blurt could tell; `recent` is short-term memory of the last few exchanges.
 pub async fn ask(
     s: &AiSettings,
+    profile: &WritingProfile,
     instruction: &str,
     context: Option<&str>,
     tone: Option<crate::voice::tone::Tone>,
@@ -66,29 +67,31 @@ pub async fn ask(
     if let Some(c) = context {
         user.push_str(&format!("\n\nCONTEXT:\n{c}"));
     }
-    if let Some(t) = tone {
+    if let Some(t) = tone.filter(|t| *t != crate::voice::tone::Tone::Calm) {
         user.push_str(&format!(
             "\n\nTONE: the user sounded {} as they said this. Let it shape your wording (calm and kind if they're \
              frustrated, down or stressed; match their energy if they're upbeat), but don't mention it.",
             t.describe()
         ));
     }
-    complete(s, &system_with_style(ASK_SYSTEM, s), &user).await
+    complete(s, &system_with_style(ASK_SYSTEM, profile, s), &user).await
 }
 
 /// Tidies dictation into good writing (the "Polished" dictation style).
-pub async fn polish(s: &AiSettings, dictation: &str) -> anyhow::Result<String> {
-    complete(s, &system_with_style(POLISH_SYSTEM, s), dictation).await
+pub async fn polish(s: &AiSettings, profile: &WritingProfile, dictation: &str) -> anyhow::Result<String> {
+    complete(s, &system_with_style(POLISH_SYSTEM, profile, s), dictation).await
 }
 
-fn system_with_style(base: &str, s: &AiSettings) -> String {
-    if s.style.trim().is_empty() {
+fn system_with_style(base: &str, profile: &WritingProfile, s: &AiSettings) -> String {
+    let mut guidance = profile.guidance();
+    if !s.style.trim().is_empty() {
+        guidance.push(' ');
+        guidance.push_str(s.style.trim());
+    }
+    if guidance.trim().is_empty() {
         base.to_string()
     } else {
-        format!(
-            "{base}\n\nThe user's writing style preferences: {}",
-            s.style.trim()
-        )
+        format!("{base}\n\nABOUT THE USER AND HOW THEY WRITE (follow unless the instruction says otherwise): {}", guidance.trim())
     }
 }
 

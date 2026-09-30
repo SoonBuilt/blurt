@@ -11,9 +11,10 @@ use crate::models::{self, Pack};
 use crate::settings::{DictationStyle, Settings};
 use crate::tray::{self, Mood};
 use crate::memory::Memory;
-use crate::voice::{tone::ToneDetector, turn};
+use crate::voice::{tone::{Tone, ToneDetector}, turn};
 use crate::{ai, audio::Recorder, insert, insert::Delivered, stt::Transcriber, text};
 use parking_lot::{Mutex, RwLock};
+use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
@@ -33,6 +34,8 @@ pub struct Engine {
     pub settings: RwLock<Settings>,
     pub stt: Transcriber,
     pub memory: Memory,
+    /// The last few tones Tally heard, newest last (for the Smarts page).
+    pub recent_tones: Mutex<VecDeque<(Tone, Instant)>>,
     tone: ToneDetector,
     turn: turn::TurnDetector,
     recorder: Recorder,
@@ -55,6 +58,7 @@ impl Engine {
             settings: RwLock::new(settings),
             stt: Transcriber::new(),
             memory: Memory::new(),
+            recent_tones: Mutex::new(VecDeque::new()),
             tone: ToneDetector::new(),
             turn: turn::TurnDetector::new(),
             recorder,
@@ -193,11 +197,11 @@ impl Engine {
         let result = self.process();
         self.busy.store(false, Ordering::SeqCst);
         match result {
-            Ok(Outcome::Done(message)) => {
+            Ok(Outcome::Done(message, tone)) => {
                 tray::set_mood(&self.app, Mood::Ready);
-                // The "copied, press ⌘V" note needs time to be read.
-                let linger = if message.starts_with("Copied") { 3500 } else { 1100 };
-                hud::set(&self.app, HudState::Done { message });
+                // The "copied, press ⌘V" note needs time to be read; a tone reading a moment too.
+                let linger = if message.starts_with("Copied") { 3500 } else if tone.is_some() { 1800 } else { 1100 };
+                hud::set(&self.app, HudState::Done { message, tone });
                 std::thread::sleep(Duration::from_millis(linger));
                 if !self.is_recording() {
                     hud::set(&self.app, HudState::Hidden);
@@ -227,13 +231,20 @@ impl Engine {
         tray::set_mood(&self.app, Mood::Working);
         hud::set(&self.app, HudState::Transcribing { ai: ai_mode });
 
-        // Hear the tone while transcribing (only Ask AI uses it).
-        let tone_job = (ai_mode && settings.voice.tone_awareness).then(|| {
+        // Hear the tone while transcribing: shown to the user, and Ask AI adapts to it.
+        let tone_job = (settings.voice.tone_awareness && ToneDetector::is_ready(&self.data_dir)).then(|| {
             let (me, s) = (self.clone(), samples.clone());
             std::thread::spawn(move || me.tone.detect(&me.data_dir, &s))
         });
         let raw = self.stt.transcribe(&self.data_dir, &samples)?;
         let tone = tone_job.and_then(|j| j.join().ok().flatten());
+        if let Some(t) = tone {
+            let mut recent = self.recent_tones.lock();
+            recent.push_back((t, Instant::now()));
+            while recent.len() > 6 {
+                recent.pop_front();
+            }
+        }
         if raw.trim().is_empty() {
             anyhow::bail!("Tally didn't catch that. Try again a little closer to the mic?");
         }
@@ -244,15 +255,18 @@ impl Engine {
                 DictationStyle::Clean => text::clean(&raw),
                 DictationStyle::Polished => {
                     let cleaned = text::clean(&raw);
-                    tauri::async_runtime::block_on(ai::polish(&settings.ai, &cleaned)).unwrap_or(cleaned)
+                    tauri::async_runtime::block_on(ai::polish(&settings.ai, &settings.profile, &cleaned)).unwrap_or(cleaned)
                 }
             };
             let delivered = insert::deliver(&self.app, &output, !settings.restore_clipboard)?;
             let words = output.split_whitespace().count();
-            return Ok(Outcome::Done(match delivered {
-                Delivered::Pasted => format!("{words} word{}", if words == 1 { "" } else { "s" }),
-                Delivered::Copied => copied_hint(),
-            }));
+            return Ok(Outcome::Done(
+                match delivered {
+                    Delivered::Pasted => format!("{words} word{}", if words == 1 { "" } else { "s" }),
+                    Delivered::Copied => copied_hint(),
+                },
+                tone,
+            ));
         }
 
         let instruction = text::clean(&raw);
@@ -261,15 +275,18 @@ impl Engine {
         let words = context.as_deref().map(|c| c.split_whitespace().count()).unwrap_or(0);
         hud::set(&self.app, HudState::Thinking { instruction: instruction.clone(), context_words: words, tone });
         let recent = settings.voice.memory.then(|| self.memory.recall()).flatten();
-        let reply = tauri::async_runtime::block_on(ai::ask(&settings.ai, &instruction, context.as_deref(), tone, recent.as_deref()))?;
+        let reply = tauri::async_runtime::block_on(ai::ask(&settings.ai, &settings.profile, &instruction, context.as_deref(), tone, recent.as_deref()))?;
         if settings.voice.memory {
             self.memory.remember(&instruction, &reply);
         }
         // AI results are typed in and stay on the clipboard, so they're never lost.
-        Ok(Outcome::Done(match insert::deliver(&self.app, &reply, true)? {
-            Delivered::Pasted => "Done · also on your clipboard".into(),
-            Delivered::Copied => copied_hint(),
-        }))
+        Ok(Outcome::Done(
+            match insert::deliver(&self.app, &reply, true)? {
+                Delivered::Pasted => "Done · also on your clipboard".into(),
+                Delivered::Copied => copied_hint(),
+            },
+            tone,
+        ))
     }
 
     fn flash_error(&self, message: &str) {
@@ -285,7 +302,7 @@ impl Engine {
 }
 
 enum Outcome {
-    Done(String),
+    Done(String, Option<Tone>),
     Nothing,
 }
 

@@ -10,9 +10,9 @@ fn main() -> anyhow::Result<()> {
     let data_dir = PathBuf::from(&args[1]);
     let wav = PathBuf::from(&args[2]);
 
-    if !blurt_lib::stt::is_downloaded(&data_dir) {
+    if !blurt_lib::models::is_ready(&data_dir, blurt_lib::models::Pack::Speech) {
         let rt = tokio::runtime::Runtime::new()?;
-        rt.block_on(blurt_lib::stt::download(&data_dir, |d, t| {
+        rt.block_on(blurt_lib::models::download(&data_dir, blurt_lib::models::Pack::Speech, |d, t| {
             eprint!("\rdownloading {:>3}%", d * 100 / t.max(1));
         }))?;
         eprintln!();
