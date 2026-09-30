@@ -60,6 +60,27 @@ impl Default for AiSettings {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+pub struct VoiceSettings {
+    /// Tally answers questions out loud instead of typing the answer.
+    pub read_answers: bool,
+    /// Tally also reads out text it wrote for you after inserting it.
+    pub read_everything: bool,
+    /// Listen to how you sound and let Ask AI adapt to it.
+    pub tone_awareness: bool,
+    /// Double-tap the talk key to talk without holding it.
+    pub hands_free: bool,
+    /// Use the premium, more expressive voice (Chatterbox Turbo) when it's installed.
+    pub premium_voice: bool,
+}
+
+impl Default for VoiceSettings {
+    fn default() -> Self {
+        Self { read_answers: true, read_everything: false, tone_awareness: true, hands_free: true, premium_voice: false }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Settings {
     /// Hold this to talk: "OptRight" (macOS default) or "CtrlRight" (Windows default).
     pub talk_key: String,
@@ -70,6 +91,7 @@ pub struct Settings {
     pub sounds: bool,
     pub onboarded: bool,
     pub ai: AiSettings,
+    pub voice: VoiceSettings,
 }
 
 impl Default for Settings {
@@ -86,6 +108,7 @@ impl Default for Settings {
             sounds: true,
             onboarded: false,
             ai: AiSettings::default(),
+            voice: VoiceSettings::default(),
         }
     }
 }

@@ -16,6 +16,8 @@ enum Cmd {
     Start,
     Stop(Sender<anyhow::Result<Vec<f32>>>),
     Cancel,
+    /// The last N seconds so far, at 16 kHz, without stopping.
+    Peek(f32, Sender<Vec<f32>>),
 }
 
 #[derive(Clone)]
@@ -55,6 +57,15 @@ impl Recorder {
     pub fn cancel(&self) {
         let _ = self.tx.send(Cmd::Cancel);
     }
+
+    /// The last `seconds` of the current recording at 16 kHz (empty if not recording).
+    pub fn peek(&self, seconds: f32) -> Vec<f32> {
+        let (tx, rx) = channel();
+        if self.tx.send(Cmd::Peek(seconds, tx)).is_err() {
+            return Vec::new();
+        }
+        rx.recv_timeout(Duration::from_secs(2)).unwrap_or_default()
+    }
 }
 
 fn audio_thread(rx: Receiver<Cmd>, on_level: Arc<dyn Fn(f32) + Send + Sync>) {
@@ -80,6 +91,18 @@ fn audio_thread(rx: Receiver<Cmd>, on_level: Arc<dyn Fn(f32) + Send + Sync>) {
                 let _ = reply.send(result);
             }
             Cmd::Cancel => current = None,
+            Cmd::Peek(seconds, reply) => {
+                let out = match current.as_ref() {
+                    Some(c) => {
+                        let buf = c.samples.lock();
+                        let n = (seconds * c.rate as f32) as usize;
+                        let tail = &buf[buf.len().saturating_sub(n)..];
+                        resample(tail, c.rate)
+                    }
+                    None => Vec::new(),
+                };
+                let _ = reply.send(out);
+            }
         }
     }
 }

@@ -4,6 +4,9 @@
 //! - hold the talk key (Right ⌥ on macOS, Right Ctrl on Windows) → dictate
 //! - add the AI modifier (⇧) at any point while holding → ask AI
 //!
+//! Plus hands-free: double-tap the talk key and just talk; Blurt stops by itself when
+//! you've finished (Smart Turn), or tap once more to stop. Esc cancels or silences Tally.
+//!
 //! A short grace period filters out normal shortcuts: if another key or a different
 //! modifier is pressed before recording starts, the press is ignored.
 
@@ -14,6 +17,8 @@ use std::time::{Duration, Instant};
 
 /// How long the talk key must be held before we start listening.
 const ARM_DELAY: Duration = Duration::from_millis(160);
+/// Two taps closer together than this start hands-free mode.
+const DOUBLE_TAP: Duration = Duration::from_millis(380);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
@@ -24,20 +29,21 @@ pub enum Mode {
 #[derive(Debug, Clone, Copy)]
 pub enum KeyAction {
     Start(Mode),
+    /// Start listening without holding; the engine decides when the user is done.
+    StartHandsFree(Mode),
     SwitchToAi,
     Stop,
+    /// Esc: cancel a recording, or stop Tally talking.
     Cancel,
 }
 
+#[derive(Clone, Copy)]
 enum Phase {
     Idle,
-    Armed {
-        since: Instant,
-        ai: bool,
-    },
-    Recording {
-        ai: bool,
-    },
+    Armed { since: Instant, ai: bool },
+    Recording { ai: bool },
+    /// Hands-free recording in progress; `released` once the double-tap key is up.
+    HandsFree { released: bool },
     /// The press turned out to be a shortcut; wait for the talk key to come up.
     Ignored,
 }
@@ -49,11 +55,7 @@ pub struct KeyConfig {
 
 impl KeyConfig {
     pub fn parse(talk: &str, ai: &str) -> Self {
-        let default_talk = if cfg!(target_os = "macos") {
-            Modifiers::OPT_RIGHT
-        } else {
-            Modifiers::CTRL_RIGHT
-        };
+        let default_talk = if cfg!(target_os = "macos") { Modifiers::OPT_RIGHT } else { Modifiers::CTRL_RIGHT };
         Self {
             talk: Modifiers::from_str(talk).unwrap_or(default_talk),
             ai: Modifiers::from_str(ai).unwrap_or(Modifiers::SHIFT),
@@ -62,82 +64,131 @@ impl KeyConfig {
 }
 
 /// Blocks the calling thread, turning raw keyboard events into [`KeyAction`]s.
-/// `config` is re-read on every event so hotkey changes apply without a restart.
-pub fn run(tx: Sender<KeyAction>, config: impl Fn() -> KeyConfig) -> handy_keys::Result<()> {
+/// `config` is re-read on every event so hotkey changes apply without a restart;
+/// `recording` reports whether the engine is still listening (hands-free can end on its own).
+pub fn run(
+    tx: Sender<KeyAction>,
+    config: impl Fn() -> KeyConfig,
+    recording: impl Fn() -> bool,
+    hands_free_enabled: impl Fn() -> bool,
+) -> handy_keys::Result<()> {
     let listener = KeyboardListener::new()?;
-    let mut phase = Phase::Idle;
+    let mut sm = Machine { phase: Phase::Idle, last_tap: None };
 
     loop {
         let event = listener.recv_timeout(Duration::from_millis(15)).ok();
         let cfg = config();
 
+        // The engine may have ended a hands-free recording by itself.
+        if let Phase::HandsFree { released: true } = sm.phase {
+            if !recording() {
+                sm.phase = Phase::Idle;
+            }
+        }
         // Promote an armed press into a recording once the grace period passes.
-        if let Phase::Armed { since, ai } = phase {
+        if let Phase::Armed { since, ai } = sm.phase {
             if since.elapsed() >= ARM_DELAY {
-                phase = Phase::Recording { ai };
+                sm.phase = Phase::Recording { ai };
+                sm.last_tap = None;
                 let _ = tx.send(KeyAction::Start(if ai { Mode::Ai } else { Mode::Dictate }));
             }
         }
 
         let Some(ev) = event else { continue };
-        phase = step(phase, &ev, &cfg, &tx);
+        sm.step(&ev, &cfg, &tx, hands_free_enabled());
     }
+}
+
+struct Machine {
+    phase: Phase,
+    last_tap: Option<Instant>,
 }
 
 fn is(changed: Option<Modifiers>, wanted: Modifiers) -> bool {
     changed.is_some_and(|c| !c.is_empty() && wanted.intersects(c))
 }
 
-fn step(phase: Phase, ev: &KeyEvent, cfg: &KeyConfig, tx: &Sender<KeyAction>) -> Phase {
-    let talk_changed = is(ev.changed_modifier, cfg.talk);
-    let ai_changed = is(ev.changed_modifier, cfg.ai);
-    // Modifiers held other than the talk key and the AI modifier.
-    let others = ev.modifiers.difference(cfg.talk | cfg.ai);
+impl Machine {
+    fn step(&mut self, ev: &KeyEvent, cfg: &KeyConfig, tx: &Sender<KeyAction>, hands_free: bool) {
+        let talk_changed = is(ev.changed_modifier, cfg.talk);
+        let ai_changed = is(ev.changed_modifier, cfg.ai);
+        let esc = ev.key == Some(Key::Escape) && ev.is_key_down;
+        // Modifiers held other than the talk key and the AI modifier.
+        let others = ev.modifiers.difference(cfg.talk | cfg.ai);
 
-    match phase {
-        Phase::Idle => {
-            if talk_changed && ev.is_key_down && others.is_empty() {
-                Phase::Armed {
-                    since: Instant::now(),
-                    ai: ev.modifiers.intersects(cfg.ai),
+        self.phase = match self.phase {
+            Phase::Idle => {
+                if esc {
+                    let _ = tx.send(KeyAction::Cancel);
+                    Phase::Idle
+                } else if talk_changed && ev.is_key_down && others.is_empty() {
+                    let ai = ev.modifiers.intersects(cfg.ai);
+                    let double = hands_free && self.last_tap.is_some_and(|t| t.elapsed() < DOUBLE_TAP);
+                    if double {
+                        self.last_tap = None;
+                        let _ = tx.send(KeyAction::StartHandsFree(if ai { Mode::Ai } else { Mode::Dictate }));
+                        Phase::HandsFree { released: false }
+                    } else {
+                        Phase::Armed { since: Instant::now(), ai }
+                    }
+                } else {
+                    Phase::Idle
                 }
-            } else {
-                Phase::Idle
             }
-        }
-        Phase::Armed { since, ai } => {
-            if talk_changed && !ev.is_key_down {
-                Phase::Idle // a quick tap, not a hold
-            } else if ev.key.is_some() && ev.is_key_down {
-                Phase::Ignored // talk key + a letter: it's a shortcut
-            } else if ai_changed && ev.is_key_down {
-                Phase::Armed { since, ai: true }
-            } else if !others.is_empty() {
-                Phase::Ignored
-            } else {
-                Phase::Armed { since, ai }
+            Phase::Armed { since, ai } => {
+                if talk_changed && !ev.is_key_down {
+                    self.last_tap = Some(Instant::now()); // a quick tap: maybe the first of two
+                    Phase::Idle
+                } else if ev.key.is_some() && ev.is_key_down {
+                    self.last_tap = None;
+                    Phase::Ignored // talk key + a letter: it's a shortcut
+                } else if ai_changed && ev.is_key_down {
+                    Phase::Armed { since, ai: true }
+                } else if !others.is_empty() {
+                    self.last_tap = None;
+                    Phase::Ignored
+                } else {
+                    Phase::Armed { since, ai }
+                }
             }
-        }
-        Phase::Recording { ai } => {
-            if talk_changed && !ev.is_key_down {
-                let _ = tx.send(KeyAction::Stop);
-                Phase::Idle
-            } else if ev.key == Some(Key::Escape) && ev.is_key_down {
-                let _ = tx.send(KeyAction::Cancel);
-                Phase::Ignored
-            } else if !ai && ai_changed && ev.is_key_down {
-                let _ = tx.send(KeyAction::SwitchToAi);
-                Phase::Recording { ai: true }
-            } else {
-                Phase::Recording { ai }
+            Phase::Recording { ai } => {
+                if talk_changed && !ev.is_key_down {
+                    let _ = tx.send(KeyAction::Stop);
+                    Phase::Idle
+                } else if esc {
+                    let _ = tx.send(KeyAction::Cancel);
+                    Phase::Ignored
+                } else if !ai && ai_changed && ev.is_key_down {
+                    let _ = tx.send(KeyAction::SwitchToAi);
+                    Phase::Recording { ai: true }
+                } else {
+                    Phase::Recording { ai }
+                }
             }
-        }
-        Phase::Ignored => {
-            if talk_changed && !ev.is_key_down {
-                Phase::Idle
-            } else {
-                Phase::Ignored
+            Phase::HandsFree { released } => {
+                if esc {
+                    let _ = tx.send(KeyAction::Cancel);
+                    Phase::Idle
+                } else if talk_changed && !ev.is_key_down && !released {
+                    Phase::HandsFree { released: true }
+                } else if talk_changed && ev.is_key_down && released {
+                    // One more tap: "I'm done".
+                    let _ = tx.send(KeyAction::Stop);
+                    Phase::Ignored
+                } else if ai_changed && ev.is_key_down {
+                    let _ = tx.send(KeyAction::SwitchToAi);
+                    Phase::HandsFree { released }
+                } else {
+                    Phase::HandsFree { released }
+                }
             }
-        }
+            Phase::Ignored => {
+                if talk_changed && !ev.is_key_down {
+                    Phase::Idle
+                } else {
+                    Phase::Ignored
+                }
+            }
+        };
     }
 }

@@ -1,6 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
-import { api, type AiProvider, type Settings, type Status } from "../lib/api";
+import { api, type AiProvider, type Pack, type Settings, type Status } from "../lib/api";
 import { Tally } from "../tally/Tally";
 
 export function useSettings(status: Status, refresh: () => void) {
@@ -73,24 +73,42 @@ export function Permissions({ status }: { status: Status }) {
   );
 }
 
-/* ---------------- Voice model ---------------- */
+/* ---------------- Downloadable packs ---------------- */
 
-export function VoiceModel({ status, refresh }: { status: Status; refresh: () => void }) {
+export function PackCard({
+  pack,
+  title,
+  blurb,
+  size,
+  ready,
+  refresh,
+  children,
+}: {
+  pack: Pack;
+  title: string;
+  blurb: string;
+  size: string;
+  ready: boolean;
+  refresh: () => void;
+  children?: React.ReactNode;
+}) {
   const [progress, setProgress] = useState<[number, number] | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const off = listen<[number, number]>("model-progress", (e) => setProgress(e.payload));
+    const off = listen<[Pack, number, number]>("pack-progress", (e) => {
+      if (e.payload[0] === pack) setProgress([e.payload[1], e.payload[2]]);
+    });
     return () => {
       off.then((f) => f());
     };
-  }, []);
+  }, [pack]);
 
   const start = async () => {
     setError("");
     setProgress([0, 1]);
     try {
-      await api.downloadModel();
+      await api.downloadPack(pack);
       refresh();
     } catch (e) {
       setError(String(e));
@@ -105,13 +123,16 @@ export function VoiceModel({ status, refresh }: { status: Status; refresh: () =>
     <div className="card model">
       <div className="row-flex">
         <div className="grow">
-          <b>Parakeet voice model</b>
-          <span>Fast, accurate speech recognition that runs on your {status.platform === "macos" ? "Mac" : "PC"}. English plus 24 European languages.</span>
+          <b>{title}</b>
+          <span>{blurb}</span>
         </div>
-        <em className="mono faint">670 MB</em>
+        <em className="mono faint">{size}</em>
       </div>
-      {status.modelDownloaded ? (
-        <p className="ok">✓ Installed and ready</p>
+      {ready ? (
+        <div className="row-flex ready-row">
+          <p className="ok grow">✓ Installed and ready</p>
+          {children}
+        </div>
       ) : progress ? (
         <>
           <div className="bar">
@@ -131,6 +152,61 @@ export function VoiceModel({ status, refresh }: { status: Status; refresh: () =>
       )}
       {error && <p className="err">{error}</p>}
     </div>
+  );
+}
+
+export function VoiceModel({ status, refresh }: { status: Status; refresh: () => void }) {
+  return (
+    <PackCard
+      pack="speech"
+      title="Parakeet voice model"
+      blurb={`Fast, accurate speech recognition that runs on your ${status.platform === "macos" ? "Mac" : "PC"}. English plus 24 European languages.`}
+      size="680 MB"
+      ready={status.modelDownloaded}
+      refresh={refresh}
+    />
+  );
+}
+
+export function TallyVoice({ status, refresh }: { status: Status; refresh: () => void }) {
+  const [playing, setPlaying] = useState(false);
+  return (
+    <PackCard
+      pack="voice"
+      title="Tally's voice"
+      blurb="Tally answers your questions out loud, in a natural voice made on your computer."
+      size="98 MB"
+      ready={status.voiceReady}
+      refresh={refresh}
+    >
+      <button
+        className="btn"
+        disabled={playing}
+        onClick={async () => {
+          setPlaying(true);
+          try {
+            await api.speakSample();
+          } finally {
+            setTimeout(() => setPlaying(false), 4000);
+          }
+        }}
+      >
+        {playing ? "🔊 Speaking…" : "▶ Hear Tally"}
+      </button>
+    </PackCard>
+  );
+}
+
+export function ToneAwareness({ status, refresh }: { status: Status; refresh: () => void }) {
+  return (
+    <PackCard
+      pack="tone"
+      title="Tone awareness"
+      blurb="Tally hears whether you sound stressed, annoyed or upbeat, and answers accordingly. Your audio never leaves your computer."
+      size="373 MB"
+      ready={status.toneReady}
+      refresh={refresh}
+    />
   );
 }
 
@@ -269,5 +345,23 @@ export function AiEngine({ status, refresh }: { status: Status; refresh: () => v
         {test.state === "err" && <span className="err">{test.text}</span>}
       </div>
     </div>
+  );
+}
+
+export function PremiumVoice({ status, refresh }: { status: Status; refresh: () => void }) {
+  const save = useSettings(status, refresh);
+  const on = status.settings.voice.premium_voice;
+  return (
+    <PackCard
+      pack="premium"
+      title="Expressive voice (Pro preview)"
+      blurb="A richer, more human Tally that can laugh, chuckle and sigh (Chatterbox Turbo). English only, and it takes a moment longer to start talking."
+      size="470 MB"
+      ready={status.premiumReady}
+      refresh={refresh}
+    >
+      <span className="pro">PRO</span>
+      <Toggle label="Use the expressive voice" on={on} onChange={(v) => save((x) => ({ ...x, voice: { ...x.voice, premium_voice: v } }))} />
+    </PackCard>
   );
 }

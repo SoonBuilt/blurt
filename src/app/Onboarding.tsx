@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api, keyLabels, type Status } from "../lib/api";
 import { Tally, type TallyMood, type TallyPaper } from "../tally/Tally";
-import { AiEngine, Permissions, VoiceModel } from "./parts";
+import { AiEngine, Permissions, TallyVoice, VoiceModel } from "./parts";
 
 type Step = { id: string; title: string };
 
@@ -97,6 +97,8 @@ export default function Onboarding({ status, refresh, onDone }: { status: Status
             <h1>Who should do the thinking?</h1>
             <p className="lead">Used when you hold {keys.aiLong} too. Dictation works without it, so you can set this up later.</p>
             <AiEngine status={status} refresh={refresh} />
+            <h3>Want Tally to talk back?</h3>
+            <TallyVoice status={status} refresh={refresh} />
           </>
         )}
 

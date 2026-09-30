@@ -13,27 +13,17 @@ const HEIGHT: f64 = 240.0;
 const BOTTOM_GAP: f64 = 28.0;
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(tag = "state", rename_all = "camelCase")]
+#[serde(tag = "state", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum HudState {
     Hidden,
-    /// Holding the key; `ai` is true once ⇧ joins.
-    Listening {
-        ai: bool,
-        context_words: usize,
-    },
-    Transcribing {
-        ai: bool,
-    },
-    Thinking {
-        instruction: String,
-        context_words: usize,
-    },
-    Done {
-        message: String,
-    },
-    Error {
-        message: String,
-    },
+    /// Holding the key (or hands-free); `ai` is true once ⇧ joins.
+    Listening { ai: bool, context_words: usize, hands_free: bool },
+    Transcribing { ai: bool },
+    Thinking { instruction: String, context_words: usize, tone: Option<crate::voice::tone::Tone> },
+    /// Tally is saying `text` out loud.
+    Speaking { text: String },
+    Done { message: String },
+    Error { message: String },
 }
 
 #[cfg(target_os = "macos")]

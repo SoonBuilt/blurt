@@ -4,11 +4,21 @@ import { Tally, type TallyMood, type TallyPaper } from "../tally/Tally";
 
 type HudState =
   | { state: "hidden" }
-  | { state: "listening"; ai: boolean; contextWords: number }
+  | { state: "listening"; ai: boolean; contextWords: number; handsFree: boolean }
   | { state: "transcribing"; ai: boolean }
-  | { state: "thinking"; instruction: string; contextWords: number }
+  | { state: "thinking"; instruction: string; contextWords: number; tone: Tone | null }
+  | { state: "speaking"; text: string }
   | { state: "done"; message: string }
   | { state: "error"; message: string };
+
+type Tone = "frustrated" | "upbeat" | "down" | "anxious" | "surprised";
+const TONE_CHIP: Record<Tone, string> = {
+  frustrated: "😮‍💨 keeping it calm",
+  upbeat: "✨ matching your energy",
+  down: "🫶 going gently",
+  anxious: "🫶 keeping it simple",
+  surprised: "😮 noted",
+};
 
 const BARS = 18;
 const isMac = navigator.userAgent.includes("Mac");
@@ -19,6 +29,7 @@ export default function Hud() {
   const [levels, setLevels] = useState<number[]>(() => Array(BARS).fill(0));
   const [seconds, setSeconds] = useState(0);
   const startedAt = useRef(0);
+  const [mouth, setMouth] = useState(false);
 
   useEffect(() => {
     const offState = listen<HudState>("hud", (e) => {
@@ -46,9 +57,16 @@ export default function Hud() {
     return () => clearInterval(t);
   }, [s.state]);
 
+  // Tally "talks" by switching between its open-mouth and smiling faces.
+  useEffect(() => {
+    if (s.state !== "speaking") return;
+    const t = setInterval(() => setMouth((m) => !m), 170);
+    return () => clearInterval(t);
+  }, [s.state]);
+
   if (s.state === "hidden") return null;
 
-  const ai = (s.state === "listening" || s.state === "transcribing") ? s.ai : s.state === "thinking";
+  const ai = s.state === "listening" || s.state === "transcribing" ? s.ai : s.state === "thinking";
   let mood: TallyMood = "hello";
   let paper: TallyPaper | undefined;
   let anim = "";
@@ -63,7 +81,7 @@ export default function Hud() {
         <>
           <Wave levels={levels} />
           <span className="lbl">{ai ? "Ask AI" : "Listening"}</span>
-          {!ai && <span className="sub">+{AI_KEY} for AI</span>}
+          {s.handsFree ? <span className="sub">hands-free · stops when you're done</span> : !ai && <span className="sub">+{AI_KEY} for AI</span>}
           <span className="sub mono">0:{String(seconds).padStart(2, "0")}</span>
         </>
       );
@@ -88,6 +106,17 @@ export default function Hud() {
           <span className="lbl">On it…</span>
           <span className="chip" title={s.instruction}>“{s.instruction}”</span>
           {s.contextWords > 0 && <span className="chip ctx">📎 {s.contextWords} words</span>}
+          {s.tone && <span className="chip tone">{TONE_CHIP[s.tone]}</span>}
+        </>
+      );
+      break;
+    case "speaking":
+      mood = mouth ? "ready" : "hello";
+      paper = "mint";
+      body = (
+        <>
+          <span className="said">{s.text}</span>
+          <span className="sub stop">Esc to stop</span>
         </>
       );
       break;

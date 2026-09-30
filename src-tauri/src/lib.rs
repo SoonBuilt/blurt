@@ -4,6 +4,8 @@ pub mod ai;
 pub mod apple;
 pub mod audio;
 mod engine;
+pub mod models;
+pub mod voice;
 mod hud;
 pub mod insert;
 pub mod keys;
@@ -24,6 +26,9 @@ struct Status {
     platform: &'static str,
     settings: Settings,
     model_downloaded: bool,
+    voice_ready: bool,
+    tone_ready: bool,
+    premium_ready: bool,
     accessibility: bool,
     microphone: &'static str,
     /// Empty when Apple Intelligence is ready.
@@ -43,7 +48,10 @@ fn get_status(engine: State<Arc<Engine>>) -> Status {
             "linux"
         },
         settings: engine.settings.read().clone(),
-        model_downloaded: stt::is_downloaded(&engine.data_dir),
+        model_downloaded: models::is_ready(&engine.data_dir, models::Pack::Speech),
+        voice_ready: models::is_ready(&engine.data_dir, models::Pack::Voice),
+        tone_ready: models::is_ready(&engine.data_dir, models::Pack::Tone),
+        premium_ready: models::is_ready(&engine.data_dir, models::Pack::Premium),
         accessibility: accessibility_granted(),
         microphone: apple::mic_status(),
         apple_ai: apple::status(),
@@ -55,23 +63,40 @@ fn get_status(engine: State<Arc<Engine>>) -> Status {
 #[tauri::command]
 fn save_settings(engine: State<Arc<Engine>>, settings: Settings) -> Result<(), String> {
     settings::save(&engine.config_dir, &settings).map_err(|e| e.to_string())?;
+    engine.speaker.set_premium(settings.voice.premium_voice);
+    let warm = settings.voice.premium_voice;
     *engine.settings.write() = settings;
+    if warm {
+        engine.speaker.warm();
+    }
     Ok(())
 }
 
 #[tauri::command]
-async fn download_model(app: AppHandle, engine: State<'_, Arc<Engine>>) -> Result<(), String> {
+async fn download_pack(app: AppHandle, engine: State<'_, Arc<Engine>>, pack: models::Pack) -> Result<(), String> {
     let engine = engine.inner().clone();
-    stt::download(&engine.data_dir, |done, total| {
-        let _ = app.emit("model-progress", (done, total));
+    models::download(&engine.data_dir, pack, |done, total| {
+        let _ = app.emit("pack-progress", (pack, done, total));
     })
     .await
     .map_err(|e| format!("Download failed: {e}"))?;
-    // Warm the model up so the first dictation is instant.
-    tauri::async_runtime::spawn_blocking(move || engine.stt.load(&engine.data_dir))
-        .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())
+    // Warm new models up so the first use is instant.
+    engine.warm_up();
+    Ok(())
+}
+
+#[tauri::command]
+fn speak_sample(engine: State<Arc<Engine>>) -> Result<(), String> {
+    if !voice::speaker::Speaker::is_ready(&engine.data_dir) {
+        return Err("Download Tally's voice first.".into());
+    }
+    let line = if engine.settings.read().voice.premium_voice && voice::premium::Premium::is_ready(&engine.data_dir) {
+        "Hi, I'm Tally! [chuckle] This is my fancy voice. Ask me anything, and I'll answer out loud."
+    } else {
+        "Hi, I'm Tally! Ask me anything, and I'll answer out loud."
+    };
+    engine.speaker.say(line, || {});
+    Ok(())
 }
 
 #[tauri::command]
@@ -82,13 +107,10 @@ fn set_api_key(provider: AiProvider, key: String) -> Result<(), String> {
 #[tauri::command]
 async fn test_ai(engine: State<'_, Arc<Engine>>) -> Result<String, String> {
     let s = engine.settings.read().ai.clone();
-    ai::ask(
-        &s,
-        "Say hi to the user in one short, friendly sentence.",
-        None,
-    )
-    .await
-    .map_err(|e| e.to_string())
+    ai::ask(&s, "Say hi to the user in one short, friendly sentence.", None, None, false)
+        .await
+        .map(|r| r.text)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -168,11 +190,14 @@ fn spawn_key_listener(engine: Arc<Engine>) {
             let mut told = false;
             loop {
                 let tx = tx.clone();
-                let e = cfg_engine.clone();
-                if let Err(err) = keys::run(tx, move || {
-                    let s = e.settings.read();
+                let (e1, e2, e3) = (cfg_engine.clone(), cfg_engine.clone(), cfg_engine.clone());
+                let config = move || {
+                    let s = e1.settings.read();
                     keys::KeyConfig::parse(&s.talk_key, &s.ai_modifier)
-                }) {
+                };
+                let recording = move || e2.is_recording();
+                let hands_free = move || e3.settings.read().voice.hands_free;
+                if let Err(err) = keys::run(tx, config, recording, hands_free) {
                     if !told {
                         log::info!("waiting for the talk key listener: {err}");
                         told = true;
@@ -225,15 +250,8 @@ pub fn run() {
                 tray::show_main(&handle);
             }
 
-            // Load the voice model in the background so the first dictation is instant.
-            if stt::is_downloaded(&engine.data_dir) {
-                let e = engine.clone();
-                std::thread::spawn(move || {
-                    if let Err(err) = e.stt.load(&e.data_dir) {
-                        log::error!("{err:#}");
-                    }
-                });
-            }
+            // Load models in the background so the first use is instant.
+            engine.warm_up();
             spawn_key_listener(engine);
             Ok(())
         })
@@ -249,7 +267,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_status,
             save_settings,
-            download_model,
+            download_pack,
+            speak_sample,
             set_api_key,
             test_ai,
             request_microphone,
