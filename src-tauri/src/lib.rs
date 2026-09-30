@@ -243,7 +243,10 @@ pub fn run() {
             hud::create(&handle)?;
             tray::create(&handle)?;
 
-            if engine.settings.read().onboarded {
+            // Opening Blurt yourself always shows its window, so it never looks like nothing
+            // happened. Only a background start (e.g. at login) stays in the menu bar.
+            let background = std::env::args().any(|a| a == "--background");
+            if background && engine.settings.read().onboarded {
                 #[cfg(target_os = "macos")]
                 app.set_activation_policy(tauri::ActivationPolicy::Accessory);
             } else {
@@ -276,6 +279,15 @@ pub fn run() {
             open_privacy_settings,
             finish_onboarding
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Blurt");
+        .build(tauri::generate_context!())
+        .expect("error while building Blurt")
+        .run(|app, event| {
+            // Clicking Blurt again (Dock, Finder, Spotlight) while it runs brings the window back.
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = event {
+                tray::show_main(app);
+            }
+            #[cfg(not(target_os = "macos"))]
+            let _ = (app, event);
+        });
 }
