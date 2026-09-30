@@ -42,7 +42,7 @@ Needs Rust, Node 24 and pnpm. On macOS, full Xcode (for the Swift bridge in
 
 ## Builds
 
-`.github/workflows/blurt.yml` (repo root) builds macOS (Apple Silicon + Intel) and Windows installers on
+`.github/workflows/build.yml` builds macOS (Apple Silicon + Intel) and Windows installers on
 every push, and drafts a GitHub release for `blurt-v*` tags. Builds are unsigned for now.
 
 ## Credits
