@@ -2,6 +2,10 @@
 #
 # Run it by hand (Actions -> build -> Run workflow) for a test build, or push a
 # `v*` tag to build and attach the installers to a draft GitHub release.
+#
+# Apple Silicon only on the Mac side: ONNX Runtime (which runs the speech model) has no
+# prebuilt binaries for x86_64-apple-darwin, so an Intel Mac build would mean compiling
+# ONNX Runtime from source. Every Mac sold since 2020 is Apple Silicon.
 name: build
 
 on:
@@ -26,9 +30,6 @@ jobs:
           - platform: macos-latest
             args: --target aarch64-apple-darwin
             rust_target: aarch64-apple-darwin
-          - platform: macos-latest
-            args: --target x86_64-apple-darwin
-            rust_target: x86_64-apple-darwin
     runs-on: ${{ matrix.platform }}
     permissions:
       contents: write
