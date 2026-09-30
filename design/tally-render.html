@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;background:transparent;overflow:hidden}
+.stage{position:absolute;inset:0;display:grid;place-items:center}
+.tile{position:absolute;inset:0;display:grid;place-items:center}
+.tile .bg{position:absolute;left:10%;top:10%;width:80%;height:80%;border-radius:22.5%;background:linear-gradient(160deg,#fffaf3 0%,#fbeee2 100%);box-shadow:0 1.2vw 3vw rgba(60,30,10,.28),inset 0 0 0 .2vw rgba(28,25,23,.06)}
+.tally .tp{position:absolute;display:block}
+</style></head><body><div class="stage" id="s"></div><script>
+/* ---------- Tally (ported from TallyReel's tally.tsx) ---------- */
+const PAPER={peach:'#ffe2cc',butter:'#fff0b0',mint:'#d7f1e0',sky:'#dde8ff',lilac:'#ebe1ff'};
+const MOOD_PAPER={hello:'peach',listening:'butter',pointing:'sky',working:'sky',ready:'mint',needs:'peach'};
+const TINK='#1c1917', CHEEK='rgba(240,106,29,.28)';
+function faceParts(mood,k){
+  const px=v=>(v*k)+'px';
+  const eyes=(dx=0,dy=0)=>[[25.9+dx,34.6+dy,10.6,15.4,`border-radius:${px(5.8)};background:${TINK}`],[54.7+dx,34.6+dy,10.6,15.4,`border-radius:${px(5.8)};background:${TINK}`]];
+  const cheeks=[[12.5,53.8,11.5,6.7,`border-radius:50%;background:${CHEEK}`],[71,53.8,11.5,6.7,`border-radius:50%;background:${CHEEK}`]];
+  const smile=[39.4,55.7,17.3,8.6,`border-bottom:${px(4.3)} solid ${TINK};border-radius:0 0 ${px(11.5)} ${px(11.5)};box-sizing:border-box`];
+  const flat=[40.3,63.4,15.4,3.8,`border-radius:${px(1.9)};background:${TINK}`];
+  switch(mood){
+    case 'listening': return [...eyes(5.8,-7.7),...cheeks,smile];
+    case 'working': return [[25,41.3,14.4,4.3,`border-radius:${px(2.9)};background:${TINK}`],[53.8,41.3,14.4,4.3,`border-radius:${px(2.9)};background:${TINK}`],...cheeks,flat];
+    case 'ready': {const lid=`border-top:${px(4.8)} solid ${TINK};border-radius:${px(11.5)} ${px(11.5)} 0 0;box-sizing:border-box`;
+      return [[25,38.4,14.4,7.7,lid],[53.8,38.4,14.4,7.7,lid],...cheeks,[36.5,55.7,23,12.5,`border-radius:0 0 ${px(13.4)} ${px(13.4)};background:${TINK}`]];}
+    case 'needs': return [...eyes(),...cheeks,flat];
+    default: return [...eyes(),...cheeks,smile];
+  }
+}
+function tally(size=48,mood='hello',paper,tilt=-4,tape){
+  paper=paper||MOOD_PAPER[mood]; const k=size/96, px=v=>(v*k)+'px'; tape=tape??size>=40;
+  const parts=faceParts(mood,k).map(([l,t,w,h,css])=>`<span class="tp" style="left:${px(l)};top:${px(t)};width:${px(w)};height:${px(h)};${css}"></span>`).join('');
+  const tp=tape?`<span class="tp" style="left:${px(26.9)};top:${px(-7.7)};width:${px(42.2)};height:${px(14.4)};background:rgba(255,255,255,.72);box-shadow:0 1px 2px rgba(0,0,0,.08);transform:rotate(-4deg)"></span>`:'';
+  return `<span class="tally" data-mood="${mood}" style="width:${size}px;height:${size}px;background:${PAPER[paper]};border-radius:${px(6.7)} ${px(6.7)} ${px(6.7)} ${px(25)};box-shadow:0 1px 1px rgba(28,25,23,.06),0 ${px(21.1)} ${px(34.6)} -${px(19.2)} rgba(28,25,23,.4);transform:rotate(${tilt}deg)">${tp}${parts}</span>`;
+}
+
+const q=new URLSearchParams(location.search);
+const size=+q.get('size')||64, mood=q.get('mood')||'hello', tile=q.get('tile')==='1', shadow=q.get('shadow')!=='0', tilt=+(q.get('tilt')||-6);
+let h=tally(size,mood,q.get('paper')||undefined,tilt,q.get('tape')==='1'?true:(q.get('tape')==='0'?false:undefined));
+if(!shadow) h=h.replace(/box-shadow:[^;]+;/,'box-shadow:0 0 0 1px rgba(28,25,23,.18);');
+document.getElementById('s').innerHTML = tile ? '<div class="tile"><div class="bg"></div>'+h+'</div>' : h;
+</script></body></html>

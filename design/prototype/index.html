@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blurt prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#ff5a1f; --accent-ink:#c43d0c; --accent-wash:#fff1eb;
+  --ink:#0d0d0c; --muted:#62615d; --faint:#8d8b86; --line:#e7e5e0;
+  --bg:#fbfbfa; --panel:#f2f1ee; --surface:#fff;
+  --hud:rgba(20,19,18,.86); --hud-line:rgba(255,255,255,.1);
+  --font:'Schibsted Grotesk',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);font-size:14px;-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+kbd{font-family:var(--mono);font-size:11px;padding:1px 6px;border-radius:5px;border:1px solid var(--line);background:var(--surface);box-shadow:0 1px 0 var(--line)}
+
+/* ---------- prototype chrome ---------- */
+.top{display:flex;align-items:center;gap:20px;padding:14px 24px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:50;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px}
+.logo{width:26px;height:26px;border-radius:8px;background:var(--ink);display:grid;place-items:center}
+.logo i{display:block;width:3px;border-radius:2px;background:var(--accent);margin:0 1px}
+.proto-tag{font-size:11px;font-weight:500;color:var(--accent-ink);background:var(--accent-wash);padding:3px 8px;border-radius:99px}
+.tabs{display:flex;gap:4px;background:var(--panel);padding:4px;border-radius:10px}
+.tabs button{padding:7px 14px;border-radius:7px;font-weight:500;color:var(--muted)}
+.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.view{display:none;padding:24px}
+.view.on{display:block}
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;max-width:1360px;margin:0 auto}
+@media (max-width:1000px){.layout{grid-template-columns:1fr}}
+
+/* guide card */
+.guide{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;align-self:start;position:sticky;top:84px}
+.guide h3{font-size:15px;margin-bottom:4px}
+.guide p{color:var(--muted);line-height:1.5;font-size:13px}
+.step{display:flex;gap:12px;padding:14px 0;border-top:1px solid var(--line)}
+.step:first-of-type{margin-top:14px}
+.step .n{flex:none;width:22px;height:22px;border-radius:50%;background:var(--panel);display:grid;place-items:center;font-size:12px;font-weight:600}
+.step b{display:block;font-size:13px;margin-bottom:3px}
+.step span b{display:inline;font-size:inherit;margin:0}
+.step span{color:var(--muted);font-size:12.5px;line-height:1.5}
+.log{margin-top:14px;border-top:1px solid var(--line);padding-top:14px}
+.log h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);margin-bottom:8px}
+.log .raw{font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--muted)}
+.log .raw s{color:#c9a9a0}
+.log .clean{margin-top:8px;font-size:13px;line-height:1.5}
+.note{margin-top:14px;font-size:12px;color:var(--faint);line-height:1.5}
+
+/* ---------- fake desktop ---------- */
+.desk{position:relative;height:680px;border-radius:16px;overflow:hidden;
+  background:radial-gradient(1200px 600px at 20% 0%,#ffd8c4 0%,transparent 60%),radial-gradient(900px 600px at 100% 100%,#c9d6ff 0%,transparent 60%),linear-gradient(135deg,#f3e6dc,#dfe4f2);
+  border:1px solid var(--line);user-select:none}
+.menubar{height:28px;background:rgba(255,255,255,.55);backdrop-filter:blur(20px);display:flex;align-items:center;padding:0 14px;gap:18px;font-size:13px;font-weight:500}
+.menubar .sp{flex:1}
+.menubar .mi{color:#333}
+.mb-blurt{height:22px;padding:0 7px;border-radius:5px;display:flex;align-items:center;gap:2px}
+.mb-blurt:hover,.mb-blurt.open{background:rgba(0,0,0,.1)}
+.mb-blurt .tally{margin-top:1px}
+.mb-blurt i{display:block;width:2.5px;border-radius:2px;background:#222;transition:height .1s}
+.mb-blurt.live i{background:var(--accent)}
+.dropdown{position:absolute;top:30px;right:120px;width:270px;background:rgba(250,250,249,.92);backdrop-filter:blur(30px);border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.2),0 0 0 .5px rgba(0,0,0,.2);padding:6px;display:none;z-index:30;font-size:13px}
+.dropdown.on{display:block}
+.dd-head{padding:8px 10px 10px;border-bottom:1px solid rgba(0,0,0,.08);margin-bottom:4px}
+.dd-head b{display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;background:#2fb344}
+.dd-head span{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.dd-item{display:flex;justify-content:space-between;padding:6px 10px;border-radius:6px}
+.dd-item:hover{background:var(--accent);color:#fff}
+.dd-item:hover kbd{background:transparent;color:#fff;border-color:rgba(255,255,255,.5);box-shadow:none}
+.dd-sep{height:1px;background:rgba(0,0,0,.08);margin:4px 0}
+.dd-last{padding:6px 10px;color:var(--muted);font-size:12px;line-height:1.4}
+
+.win{position:absolute;background:var(--surface);border-radius:12px;box-shadow:0 20px 50px rgba(30,20,10,.18),0 0 0 .5px rgba(0,0,0,.15);overflow:hidden;display:flex;flex-direction:column}
+.win-bar{height:36px;display:flex;align-items:center;gap:7px;padding:0 12px;border-bottom:1px solid var(--line);background:#fafaf9;flex:none}
+.win-bar i{width:11px;height:11px;border-radius:50%;background:#ff5f57}
+.win-bar i:nth-child(2){background:#febc2e}.win-bar i:nth-child(3){background:#28c840}
+.win-bar b{margin-left:10px;font-size:12.5px;font-weight:600;color:var(--muted)}
+
+/* chat window */
+#chat{left:28px;top:56px;width:47%;height:430px}
+.msgs{flex:1;padding:16px;display:flex;flex-direction:column;gap:14px;overflow:auto}
+.msg{display:flex;gap:10px}
+.av{width:30px;height:30px;border-radius:8px;flex:none;background:#c9d6ff;display:grid;place-items:center;font-weight:700;font-size:12px}
+.msg.me .av{background:var(--accent-wash);color:var(--accent-ink)}
+.msg b{font-size:13px}.msg b small{font-weight:400;color:var(--faint);margin-left:6px}
+.msg p{margin-top:2px;line-height:1.45;color:#222}
+.composer{margin:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:74px;line-height:1.5;outline:none;user-select:text}
+.composer:focus{border-color:#bbb}
+.composer:empty:before{content:attr(data-ph);color:var(--faint)}
+.typing-caret{display:inline-block;width:2px;height:16px;background:var(--accent);vertical-align:-3px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* notes window */
+#notes{right:28px;top:96px;width:44%;height:470px}
+.doc{flex:1;padding:22px 26px;overflow:auto;user-select:text;outline:none;line-height:1.65;color:#222}
+.doc h2{font-size:19px;margin-bottom:10px}
+.doc p{margin-bottom:12px}
+.doc ::selection{background:#ffd6c4}
+.flash{animation:flash 1.4s ease-out}
+@keyframes flash{0%{background:#ffd6c4}100%{background:transparent}}
+
+/* Tally */
+.tally{position:relative;display:inline-block;flex:none;transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+.tally .tp{position:absolute;display:block}
+.t-bob{animation:tbob 1.6s ease-in-out infinite}
+@keyframes tbob{0%,100%{translate:0 0}50%{translate:0 -2px}}
+.t-wiggle{animation:twig .5s ease-in-out infinite}
+@keyframes twig{0%,100%{rotate:-4deg}50%{rotate:4deg}}
+.t-pop{animation:tpop .45s cubic-bezier(.2,1.6,.4,1)}
+@keyframes tpop{0%{scale:.6}100%{scale:1}}
+.t-wave{animation:twave 2.4s ease-in-out infinite;transform-origin:50% 90%}
+@keyframes twave{0%,60%,100%{rotate:0}70%{rotate:-8deg}80%{rotate:6deg}90%{rotate:-4deg}}
+.bubble{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:10px 14px;font-size:13.5px;line-height:1.45;box-shadow:0 6px 18px rgba(0,0,0,.05)}
+.buddy{display:flex;align-items:flex-end;gap:12px}
+.ob-tally{margin-bottom:18px}
+/* HUD pill */
+.hud{position:absolute;left:50%;bottom:72px;transform:translate(-50%,20px);opacity:0;transition:.22s cubic-bezier(.2,.8,.2,1);background:var(--hud);backdrop-filter:blur(24px);color:#fff;border-radius:99px;padding:8px 16px 8px 10px;display:flex;align-items:center;gap:12px;box-shadow:0 10px 30px rgba(0,0,0,.25),inset 0 0 0 1px var(--hud-line);pointer-events:none;z-index:20;white-space:nowrap;max-width:90%}
+.hud.on{opacity:1;transform:translate(-50%,0)}
+.hud .tslot{width:34px;height:34px;display:grid;place-items:center;flex:none;margin:-4px 0}
+.hud .ic{width:28px;height:28px;border-radius:50%;background:var(--accent);display:grid;place-items:center;flex:none}
+.hud .ic.muted{background:rgba(255,255,255,.14)}
+.hud .ic.ai{background:linear-gradient(135deg,#ff5a1f,#b44bff)}
+.aicard{position:absolute;left:50%;bottom:120px;transform:translate(-50%,10px);width:440px;max-width:92%;background:rgba(252,252,251,.97);backdrop-filter:blur(30px);border-radius:14px;box-shadow:0 22px 60px rgba(0,0,0,.25),0 0 0 .5px rgba(0,0,0,.2);z-index:26;opacity:0;pointer-events:none;transition:.2s cubic-bezier(.2,.8,.2,1);overflow:hidden}
+.aicard.on{opacity:1;pointer-events:auto;transform:translate(-50%,0)}
+.ai-head{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,#fff1eb,#f6ecff)}
+.ai-head .spark{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#ff5a1f,#b44bff);color:#fff;display:grid;place-items:center;font-size:12px;flex:none}
+.ai-head small{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint)}
+.ai-head i{font-size:13px;color:var(--muted);line-height:1.4}
+.ai-body{padding:14px 16px;font-size:14px;line-height:1.6;white-space:pre-wrap;max-height:230px;overflow:auto}
+.ai-foot{display:flex;gap:6px;align-items:center;padding:0 14px 14px}
+.ai-foot .hint{margin-left:auto;font-size:11.5px;color:var(--faint)}
+.dock-hint button.hold.ai{background:linear-gradient(135deg,#ff5a1f,#b44bff)}
+.hud .ic svg{width:14px;height:14px}
+.wave{display:flex;align-items:center;gap:3px;height:22px}
+.wave i{display:block;width:3px;border-radius:2px;background:#fff;height:4px;transition:height .08s}
+.hud .lbl{font-size:13px;font-weight:500}
+.hud .sub{font-size:12px;color:rgba(255,255,255,.55);font-family:var(--mono)}
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.chip{background:rgba(255,255,255,.12);padding:3px 10px;border-radius:99px;font-size:12.5px;max-width:320px;overflow:hidden;text-overflow:ellipsis}
+
+/* rewrite popup */
+.pop{position:absolute;width:320px;background:rgba(252,252,251,.96);backdrop-filter:blur(30px);border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.22),0 0 0 .5px rgba(0,0,0,.2);z-index:25;display:none;overflow:hidden}
+.pop.on{display:block;animation:pop .16s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(-4px) scale(.98)}}
+.pop-search{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.pop-search input{flex:1;border:0;outline:0;background:none;font:inherit;font-size:13.5px}
+.pop-search .mic{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--faint)}
+.pop-list{padding:6px}
+.pop-item{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:7px;font-size:13.5px}
+.pop-item .gl{width:22px;height:22px;border-radius:6px;background:var(--panel);display:grid;place-items:center;font-size:12px}
+.pop-item kbd{margin-left:auto}
+.pop-item.sel,.pop-item:hover{background:var(--accent);color:#fff}
+.pop-item.sel .gl,.pop-item:hover .gl{background:rgba(255,255,255,.2)}
+.pop-item.sel kbd,.pop-item:hover kbd{background:transparent;border-color:rgba(255,255,255,.5);color:#fff;box-shadow:none}
+.pop-sec{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);padding:8px 8px 4px}
+.pop-result{padding:14px;display:none}
+.pop-result .from{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;display:flex;justify-content:space-between}
+.pop-result .out{font-size:13.5px;line-height:1.55;max-height:180px;overflow:auto;white-space:pre-wrap}
+.pop-actions{display:flex;gap:6px;margin-top:12px}
+.btn{padding:7px 12px;border-radius:8px;font-size:12.5px;font-weight:500;background:var(--panel);display:inline-flex;align-items:center;gap:6px}
+.btn.pri{background:var(--ink);color:#fff}
+.btn.pri kbd{background:transparent;color:#fff;border-color:rgba(255,255,255,.35);box-shadow:none}
+.btn.acc{background:var(--accent);color:#fff}
+
+.toast{position:absolute;left:50%;bottom:72px;transform:translate(-50%,20px);opacity:0;transition:.22s;background:var(--hud);color:#fff;border-radius:10px;padding:9px 14px;font-size:13px;display:flex;gap:10px;align-items:center;z-index:21;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast u{text-decoration:none;color:#ffb89c}
+
+.dock-hint{position:absolute;left:28px;bottom:22px;display:flex;gap:8px;z-index:5}
+.dock-hint button{background:rgba(255,255,255,.75);backdrop-filter:blur(10px);border-radius:99px;padding:8px 14px;font-size:12.5px;font-weight:500;box-shadow:0 2px 8px rgba(0,0,0,.08);display:flex;gap:6px;align-items:center}
+.dock-hint button.hold{background:var(--ink);color:#fff}
+
+/* ---------- onboarding ---------- */
+.center{max-width:980px;margin:0 auto}
+.ob{display:grid;grid-template-columns:240px 1fr;background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;min-height:560px;box-shadow:0 20px 50px rgba(0,0,0,.06)}
+@media (max-width:760px){.ob{grid-template-columns:1fr}}
+.ob-side{background:var(--panel);padding:24px 18px;border-right:1px solid var(--line)}
+.ob-side .brand{margin-bottom:28px}
+.ob-steps{display:flex;flex-direction:column;gap:2px}
+.ob-steps div{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:var(--muted);font-weight:500}
+.ob-steps div .n{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:11px;background:var(--surface)}
+.ob-steps div.on{background:var(--surface);color:var(--ink)}
+.ob-steps div.on .n{border-color:var(--accent);color:var(--accent)}
+.ob-steps div.done .n{background:var(--ink);border-color:var(--ink);color:#fff}
+.ob-main{padding:40px 44px;display:flex;flex-direction:column}
+.ob-page{display:none;flex:1;flex-direction:column}
+.ob-page.on{display:flex}
+.ob-page h2{font-size:26px;letter-spacing:-.02em;margin-bottom:8px}
+.ob-page>p{color:var(--muted);line-height:1.55;max-width:520px}
+.ob-foot{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:28px}
+.big{padding:11px 20px;border-radius:10px;font-weight:600;font-size:14px}
+.big.pri{background:var(--ink);color:#fff}
+.big.ghost{color:var(--muted)}
+.perm{display:flex;align-items:center;gap:14px;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:12px}
+.perm .pi{width:36px;height:36px;border-radius:10px;background:var(--panel);display:grid;place-items:center;font-size:17px}
+.perm b{display:block}
+.perm span{color:var(--muted);font-size:12.5px}
+.perm .ok{margin-left:auto;color:#2fb344;font-weight:600;font-size:13px;display:none}
+.perm.granted .ok{display:block}
+.perm.granted .btn{display:none}
+.perm .btn{margin-left:auto}
+.models{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:22px}
+@media (max-width:760px){.models{grid-template-columns:1fr}}
+.model{border:1.5px solid var(--line);border-radius:12px;padding:14px;text-align:left}
+.model.on{border-color:var(--accent);background:var(--accent-wash)}
+.model b{display:block;margin-bottom:4px}
+.model span{font-size:12px;color:var(--muted);line-height:1.5;display:block}
+.model em{font-style:normal;font-size:11px;font-family:var(--mono);color:var(--faint);display:block;margin-top:8px}
+.bar{height:8px;background:var(--panel);border-radius:99px;overflow:hidden;margin-top:22px}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.bar-lbl{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:8px;font-family:var(--mono)}
+.keys{display:flex;flex-direction:column;gap:12px;margin-top:22px}
+.keyrow{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.keyrow b{display:block}
+.keyrow span{font-size:12.5px;color:var(--muted)}
+.keycap{min-width:120px;text-align:center;padding:8px 12px;border-radius:9px;border:1.5px solid var(--line);font-family:var(--mono);font-size:13px;background:var(--bg)}
+.keycap.rec{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-wash)}
+.tryit{margin-top:26px;border:1.5px dashed var(--line);border-radius:14px;min-height:130px;padding:18px;line-height:1.6;font-size:15px}
+.tryit:empty:before{content:'Hold ⌥ Option and say “Hey, this is my first message with Blurt.”';color:var(--faint)}
+
+/* ---------- settings ---------- */
+.set{display:grid;grid-template-columns:200px 1fr;background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;min-height:600px;box-shadow:0 20px 50px rgba(0,0,0,.06)}
+@media (max-width:760px){.set{grid-template-columns:1fr}}
+.set-side{background:var(--panel);padding:16px 10px;border-right:1px solid var(--line)}
+.set-side button{display:flex;width:100%;text-align:left;padding:8px 10px;border-radius:7px;font-weight:500;color:var(--muted);gap:9px}
+.set-side button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.set-main{padding:28px 32px}
+.set-page{display:none}.set-page.on{display:block}
+.set-page h2{font-size:20px;margin-bottom:4px}
+.set-page>p{color:var(--muted);margin-bottom:18px}
+.group{border:1px solid var(--line);border-radius:12px;margin-bottom:16px}
+.row{display:flex;align-items:center;gap:16px;padding:13px 16px;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row .t{flex:1}
+.row .t b{display:block;font-weight:500}
+.row .t span{font-size:12.5px;color:var(--muted)}
+.tog{width:38px;height:22px;border-radius:99px;background:#d9d7d2;position:relative;flex:none;transition:.15s}
+.tog:after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:.15s}
+.tog.on{background:var(--accent)}.tog.on:after{left:18px}
+select,.inp{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.seg{display:flex;background:var(--panel);border-radius:9px;padding:3px}
+.seg button{padding:6px 12px;border-radius:7px;font-size:12.5px;font-weight:500;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.engine{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.engine button{border:1.5px solid var(--line);border-radius:12px;padding:14px;text-align:left}
+.engine button.on{border-color:var(--accent);background:var(--accent-wash)}
+.engine b{display:block;margin-bottom:3px}
+.engine span{font-size:12px;color:var(--muted);line-height:1.45}
+.warn{background:#fff8e6;border:1px solid #f3e1a8;border-radius:10px;padding:10px 14px;font-size:12.5px;color:#7a5b00;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.act{display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid var(--line)}
+.act:first-child{border-top:0}
+.act .gl{width:26px;height:26px;border-radius:7px;background:var(--panel);display:grid;place-items:center}
+.act .t{flex:1}
+.act .t b{display:block;font-weight:500}
+.act .t span{font-size:12px;color:var(--muted);font-family:var(--mono)}
+.hist{font-size:13px}
+.hist .row .t b{font-weight:400;line-height:1.45}
+.pill{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--panel);color:var(--muted);font-weight:500}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><span data-tally="28,hello,peach,-4,0"></span>Blurt <span class="proto-tag">UI prototype</span></div>
+  <nav class="tabs" id="tabs">
+    <button class="on" data-v="try">Try it</button>
+    <button data-v="onboard">First run</button>
+    <button data-v="settings">Settings</button>
+  </nav>
+</header>
+
+<!-- ================= TRY IT ================= -->
+<section class="view on" id="v-try">
+ <div class="layout">
+  <div class="desk" id="desk">
+    <div class="menubar">
+      <span class="mi" style="font-weight:700"></span><span class="mi" style="font-weight:600">Notes</span><span class="mi">File</span><span class="mi">Edit</span><span class="mi">View</span>
+      <span class="sp"></span>
+      <div class="mb-blurt" id="mbIcon" title="Blurt"></div>
+      <span class="mi">🔋</span><span class="mi">Tue 29 Sep 10:42</span>
+    </div>
+
+    <div class="dropdown" id="dropdown">
+      <div class="dd-head"><b><span data-tally="20,ready,mint,-4,0"></span>Tally is ready when you are</b><span>Voice: Whisper base.en · on-device<br>Rewrite: Ollama · llama3.2:3b</span></div>
+      <div class="dd-item">Dictate <kbd>hold ⌥</kbd></div>
+      <div class="dd-item">Ask AI <kbd>hold ⌥ ⇧</kbd></div>
+      <div class="dd-item">Paste last transcript <kbd>⌥⇧V</kbd></div>
+      <div class="dd-sep"></div>
+      <div class="dd-last"><b style="color:var(--ink)">Last:</b> <span id="ddLast">Nothing yet. Hold ⌥ and talk.</span></div>
+      <div class="dd-sep"></div>
+      <div class="dd-item" data-go="settings">Settings… <kbd>⌘,</kbd></div>
+      <div class="dd-item">Pause Blurt</div>
+      <div class="dd-item">Quit</div>
+    </div>
+
+    <div class="win" id="chat">
+      <div class="win-bar"><i></i><i></i><i></i><b># launch-week</b></div>
+      <div class="msgs">
+        <div class="msg"><div class="av">SA</div><div><b>Sara <small>10:31</small></b><p>Can someone give me a quick update on the landing page? Need it before standup.</p></div></div>
+        <div class="msg"><div class="av">JK</div><div><b>Jon <small>10:38</small></b><p>Copy is done, waiting on the hero video 🙏</p></div></div>
+      </div>
+      <div class="composer" id="composer" contenteditable="true" data-ph="Message #launch-week — click here, then hold ⌥ Option and talk"></div>
+    </div>
+
+    <div class="win" id="notes">
+      <div class="win-bar"><i></i><i></i><i></i><b>Notes — Client email draft</b></div>
+      <div class="doc" id="doc" contenteditable="true" spellcheck="false">
+        <h2>Re: timeline</h2>
+        <p id="p1">hey so basically we cant hit the friday deadline because the api from your side still isnt working and honestly we told you about this like two weeks ago so its not really on us.</p>
+        <p id="p2">We will need an extra week to finish integration testing, the payment flow and the admin dashboard, after which we can deploy to production and hand over the documentation.</p>
+      </div>
+    </div>
+
+    <div class="aicard" id="aicard">
+      <div class="ai-head"><span id="aiTally"></span><div><small>You asked</small><i id="aiAsk"></i></div></div>
+      <div class="ai-body" id="aiBody"></div>
+      <div class="ai-foot" id="aiFoot"></div>
+    </div>
+    <div class="hud" id="hud"></div>
+    <div class="toast" id="toast"></div>
+
+    <div class="dock-hint">
+      <button id="holdBtn">🎙 Hold to dictate <kbd>⌥</kbd></button>
+      <button id="aiBtn">✨ Hold to ask AI <kbd>⌥ ⇧</kbd></button>
+    </div>
+  </div>
+
+  <aside class="guide">
+    <div class="buddy" style="margin-bottom:12px"><span data-tally="44,hello,peach,-6" class="t-wave"></span><div class="bubble">Hi, I'm <b>Tally</b>, your Blurt buddy. Hold ⌥ and talk to me.</div></div>
+    <h3>Two ways to use Blurt</h3>
+    <p>One key. This is a mock desktop. Nothing is recorded, and the AI replies are scripted.</p>
+    <div class="step"><div class="n">1</div><div><b>Dictate: hold ⌥</b><span>Click the Slack message box, hold <b>⌥ Option</b> (or the button), talk and let go. What you said is typed out cleanly.</span></div></div>
+    <div class="step"><div class="n">2</div><div><b>Ask AI: hold ⌥ + ⇧</b><span>Same key, just add <b>⇧ Shift</b> (at any point while holding). What you say becomes a prompt: <i>“write an email to Sara saying…”</i>, <i>“turn this into a standup update…”</i>, or a question.</span></div></div>
+    <div class="step"><div class="n">📎</div><div><b>Highlighted text = context</b><span>Select text in Notes first, then ask AI. The selection goes along as context: <i>“make this polite but firm”</i>, <i>“bullet points”</i>, <i>“is this too rude?”</i>. The result replaces your selection.</span></div></div>
+    <div class="log" id="log" style="display:none">
+      <h4>What Blurt heard → typed</h4>
+      <div class="raw" id="logRaw"></div>
+      <div class="clean" id="logClean"></div>
+    </div>
+    <p class="note">Click Tally in the menu bar to see the dropdown.</p>
+  </aside>
+ </div>
+</section>
+
+<!-- ================= ONBOARDING ================= -->
+<section class="view" id="v-onboard">
+ <div class="center">
+  <div class="ob">
+    <div class="ob-side">
+      <div class="brand"><span data-tally="28,hello,peach,-4,0"></span>Blurt</div>
+      <div class="ob-steps" id="obSteps">
+        <div class="on"><span class="n">1</span>Welcome</div>
+        <div><span class="n">2</span>Permissions</div>
+        <div><span class="n">3</span>Voice model</div>
+        <div><span class="n">4</span>Shortcuts</div>
+        <div><span class="n">5</span>Try it</div>
+      </div>
+    </div>
+    <div class="ob-main">
+      <div class="ob-page on">
+        <div class="buddy ob-tally"><span data-tally="96,hello,peach,-6" class="t-wave"></span><div class="bubble">Hi! I'm <b>Tally</b>. I live in your menu bar and turn what you say into writing.</div></div>
+        <h2>Talk instead of typing.</h2>
+        <p>Hold one key to turn your voice into clean text in any app. Add Shift and your voice becomes a prompt for AI. Your voice is processed on your Mac and never uploaded.</p>
+        <div style="display:flex;gap:10px;margin-top:28px;flex-wrap:wrap">
+          <span class="pill">🎙 Dictate anywhere</span><span class="pill">✨ Ask AI by voice</span><span class="pill">📎 Highlight = context</span><span class="pill">🔒 100% local</span>
+        </div>
+        <div class="ob-foot"><span></span><button class="big pri" data-ob="next">Get started →</button></div>
+      </div>
+      <div class="ob-page">
+        <div class="buddy ob-tally"><span id="permTally" data-tally="64,needs,peach,-4"></span><div class="bubble" id="permSay">I need two things before I can help.</div></div>
+        <h2>Two quick permissions</h2>
+        <p>macOS needs to know Blurt can hear you and type into other apps. You can revoke these any time in System Settings.</p>
+        <div class="perm"><div class="pi">🎙</div><div><b>Microphone</b><span>So Blurt can hear you while you hold the key. Never in the background.</span></div><button class="btn acc" data-grant>Allow</button><span class="ok">✓ Granted</span></div>
+        <div class="perm"><div class="pi">⌨️</div><div><b>Accessibility</b><span>To read highlighted text and type or paste into the app you're using.</span></div><button class="btn acc" data-grant>Open Settings</button><span class="ok">✓ Granted</span></div>
+        <div class="ob-foot"><button class="big ghost" data-ob="back">← Back</button><button class="big pri" data-ob="next">Continue →</button></div>
+      </div>
+      <div class="ob-page">
+        <div class="buddy ob-tally"><span id="dlTally" data-tally="64,pointing,sky,3"></span><div class="bubble" id="dlSay">This is how I learn to hear you. It stays on your Mac.</div></div>
+        <h2>Pick a voice model</h2>
+        <p>Downloaded once and stored on your Mac. You can switch later.</p>
+        <div class="models" id="models">
+          <button class="model"><b>Fast</b><span>Instant results. Good for short messages.</span><em>tiny.en · 75 MB</em></button>
+          <button class="model on"><b>Balanced</b><span>Recommended. Accurate and fast on Apple Silicon.</span><em>base.en · 142 MB</em></button>
+          <button class="model"><b>Accurate</b><span>Best for accents, jargon and long dictation.</span><em>small · 466 MB</em></button>
+        </div>
+        <div class="bar"><i id="dlBar"></i></div>
+        <div class="bar-lbl"><span id="dlLbl">Ready to download</span><span id="dlPct">0%</span></div>
+        <div class="ob-foot"><button class="big ghost" data-ob="back">← Back</button><button class="big pri" id="dlBtn">Download</button></div>
+      </div>
+      <div class="ob-page">
+        <div class="buddy ob-tally"><span data-tally="64,pointing,butter,-3"></span><div class="bubble">One key. Hold it to talk. Add Shift and I'll use AI.</div></div>
+        <h2>Your shortcuts</h2>
+        <p>Click a shortcut, then press the keys you want to use instead.</p>
+        <div class="keys">
+          <div class="keyrow"><div><b>Talk key</b><span>Hold to dictate, release to insert</span></div><button class="keycap" data-rec>Right ⌥ Option</button></div>
+          <div class="keyrow"><div><b>AI modifier</b><span>Add this while holding the talk key to ask AI</span></div><button class="keycap" data-rec>⇧ Shift</button></div>
+          <div class="keyrow"><div><b>Hands-free mode</b><span>Tap the talk key twice to keep listening until you tap again</span></div><button class="keycap" data-rec>⌥ ⌥</button></div>
+        </div>
+        <div class="ob-foot"><button class="big ghost" data-ob="back">← Back</button><button class="big pri" data-ob="next">Continue →</button></div>
+      </div>
+      <div class="ob-page">
+        <div class="buddy ob-tally"><span id="tryTally" data-tally="64,listening,butter,-4" class="t-bob"></span><div class="bubble" id="trySay">Go on, say something. I'm listening.</div></div>
+        <h2>Try it now</h2>
+        <p>Click the box, hold <kbd>⌥ Option</kbd>, say something and let go.</p>
+        <div class="tryit" id="tryit" contenteditable="true"></div>
+        <div class="ob-foot"><button class="big ghost" data-ob="back">← Back</button><button class="big pri" data-ob="finish">Finish, Blurt lives in your menu bar</button></div>
+      </div>
+    </div>
+  </div>
+ </div>
+</section>
+
+<!-- ================= SETTINGS ================= -->
+<section class="view" id="v-settings">
+ <div class="center">
+  <div class="set">
+    <div class="set-side" id="setSide">
+      <button class="on" data-s="general">⚙️ General</button>
+      <button data-s="voice">🎙 Voice</button>
+      <button data-s="rewrite">✨ AI engine</button>
+      
+      <button data-s="words">📖 Dictionary</button>
+      <button data-s="history">🕘 History</button>
+    </div>
+    <div class="set-main">
+      <div class="set-page on" data-sp="general">
+        <h2>General</h2><p>How Blurt behaves day to day.</p>
+        <div class="group">
+          <div class="row"><div class="t"><b>Launch at login</b></div><button class="tog on"></button></div>
+          <div class="row"><div class="t"><b>Talk key</b><span>Hold to dictate</span></div><span class="keycap">Right ⌥</span></div>
+          <div class="row"><div class="t"><b>AI modifier</b><span>Hold with the talk key to ask AI</span></div><span class="keycap">⇧ Shift</span></div>
+          <div class="row"><div class="t"><b>Insert text by</b><span>Paste is faster. Typing works in apps that block paste.</span></div><div class="seg"><button class="on">Paste</button><button>Type</button></div></div>
+          <div class="row"><div class="t"><b>Play sounds</b><span>A soft tick when Blurt starts and stops listening</span></div><button class="tog on"></button></div>
+          <div class="row"><div class="t"><b>Restore clipboard after paste</b></div><button class="tog on"></button></div>
+        </div>
+      </div>
+      <div class="set-page" data-sp="voice">
+        <h2>Voice</h2><p>Speech to text runs on this Mac.</p>
+        <div class="group">
+          <div class="row"><div class="t"><b>Model</b><span>base.en · 142 MB · installed</span></div><select><option>Fast · tiny.en</option><option selected>Balanced · base.en</option><option>Accurate · small</option></select></div>
+          <div class="row"><div class="t"><b>Language</b></div><select><option>English</option><option>Auto-detect</option><option>Urdu</option><option>Hindi</option><option>Arabic</option></select></div>
+          <div class="row"><div class="t"><b>Remove filler words</b><span>um, uh, like, you know…</span></div><button class="tog on"></button></div>
+          <div class="row"><div class="t"><b>Smart formatting</b><span>Punctuation, capitals, numbers, “new line”, “bullet point”</span></div><button class="tog on"></button></div>
+          <div class="row"><div class="t"><b>Dictation style</b><span>Verbatim = exactly what you said · Clean = no fillers · Polished = AI tidies it into good writing</span></div><div class="seg"><button>Verbatim</button><button class="on">Clean</button><button>Polished</button></div></div>
+          <div class="row"><div class="t"><b>Microphone</b></div><select><option>MacBook Pro Microphone</option><option>AirPods Pro</option></select></div>
+        </div>
+      </div>
+      <div class="set-page" data-sp="rewrite">
+        <h2>AI engine</h2><p>Which AI answers when you hold ⌥ + ⇧.</p>
+        <div class="engine" id="engine">
+          <button class="on"><b>🖥 Local (Ollama)</b><span>Free and private. Runs on your Mac. Needs Ollama installed.</span></button>
+          <button><b>🔑 Your own API key</b><span>OpenAI, Anthropic or any OpenAI-compatible endpoint. Faster, smarter. You pay the provider.</span></button>
+        </div>
+        <div class="warn"><span style="display:flex;gap:10px;align-items:center"><span data-tally="26,needs,peach,-4,0"></span><span>Ollama isn't running. Install it and Blurt will pull a small model (llama3.2:3b, 2 GB).</span></span><button class="btn">Install guide</button></div>
+        <div class="group">
+          <div class="row"><div class="t"><b>Model</b></div><select><option>llama3.2:3b</option><option>qwen2.5:7b</option><option>gemma3:4b</option></select></div>
+          <div class="row"><div class="t"><b>Ask AI can search the web</b><span>For questions about current things. Only with an API key that supports it.</span></div><button class="tog"></button></div>
+          <div class="row"><div class="t"><b>Show result card before inserting</b><span>Off = insert or replace instantly, ⌘Z to undo</span></div><button class="tog on"></button></div>
+          <div class="row"><div class="t"><b>Your writing style</b><span>Added to every rewrite</span></div><input class="inp" style="width:260px" value="Casual, concise, no emojis, British spelling"></div>
+        </div>
+      </div>
+      <div class="set-page" data-sp="words">
+        <h2>Dictionary</h2><p>Names and jargon Blurt should always spell right.</p>
+        <div class="group">
+          <div class="row"><div class="t"><b>soonbuilt</b><span>heard as: soon built, soonbilt</span></div><button class="btn">Edit</button></div>
+          <div class="row"><div class="t"><b>Tauri</b><span>heard as: tory, towery</span></div><button class="btn">Edit</button></div>
+          <div class="row"><div class="t"><b>Supabase</b><span>heard as: super base</span></div><button class="btn">Edit</button></div>
+        </div>
+        <button class="btn">+ Add word</button>
+      </div>
+      <div class="set-page" data-sp="history">
+        <h2>History</h2><p>Kept on this Mac for 7 days. Click to copy.</p>
+        <div class="group hist">
+          <div class="row"><div class="t"><b>Quick update, copy's done and the hero video lands this afternoon, so we're on track for Thursday.</b><span>Slack · 10:42</span></div><span class="pill">dictated</span></div>
+          <div class="row"><div class="t"><b>We won't be able to meet Friday's deadline, as the API integration on your side is still pending…</b><span>Notes · 10:39</span></div><span class="pill">AI</span></div>
+          <div class="row"><div class="t"><b>Can we move the call to 4pm? Something came up on my end.</b><span>Messages · 09:58</span></div><span class="pill">dictated</span></div>
+        </div>
+        <div class="row" style="border:0;padding-left:0"><div class="t"><b>Keep history</b></div><select><option>7 days</option><option>Never</option><option>30 days</option></select></div>
+      </div>
+    </div>
+  </div>
+ </div>
+</section>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+
+/* ---------- Tally (ported from TallyReel's tally.tsx) ---------- */
+const PAPER={peach:'#ffe2cc',butter:'#fff0b0',mint:'#d7f1e0',sky:'#dde8ff',lilac:'#ebe1ff'};
+const MOOD_PAPER={hello:'peach',listening:'butter',pointing:'sky',working:'sky',ready:'mint',needs:'peach'};
+const TINK='#1c1917', CHEEK='rgba(240,106,29,.28)';
+function faceParts(mood,k){
+  const px=v=>(v*k)+'px';
+  const eyes=(dx=0,dy=0)=>[[25.9+dx,34.6+dy,10.6,15.4,`border-radius:${px(5.8)};background:${TINK}`],[54.7+dx,34.6+dy,10.6,15.4,`border-radius:${px(5.8)};background:${TINK}`]];
+  const cheeks=[[12.5,53.8,11.5,6.7,`border-radius:50%;background:${CHEEK}`],[71,53.8,11.5,6.7,`border-radius:50%;background:${CHEEK}`]];
+  const smile=[39.4,55.7,17.3,8.6,`border-bottom:${px(4.3)} solid ${TINK};border-radius:0 0 ${px(11.5)} ${px(11.5)};box-sizing:border-box`];
+  const flat=[40.3,63.4,15.4,3.8,`border-radius:${px(1.9)};background:${TINK}`];
+  switch(mood){
+    case 'listening': return [...eyes(5.8,-7.7),...cheeks,smile];
+    case 'working': return [[25,41.3,14.4,4.3,`border-radius:${px(2.9)};background:${TINK}`],[53.8,41.3,14.4,4.3,`border-radius:${px(2.9)};background:${TINK}`],...cheeks,flat];
+    case 'ready': {const lid=`border-top:${px(4.8)} solid ${TINK};border-radius:${px(11.5)} ${px(11.5)} 0 0;box-sizing:border-box`;
+      return [[25,38.4,14.4,7.7,lid],[53.8,38.4,14.4,7.7,lid],...cheeks,[36.5,55.7,23,12.5,`border-radius:0 0 ${px(13.4)} ${px(13.4)};background:${TINK}`]];}
+    case 'needs': return [...eyes(),...cheeks,flat];
+    default: return [...eyes(),...cheeks,smile];
+  }
+}
+function tally(size=48,mood='hello',paper,tilt=-4,tape){
+  paper=paper||MOOD_PAPER[mood]; const k=size/96, px=v=>(v*k)+'px'; tape=tape??size>=40;
+  const parts=faceParts(mood,k).map(([l,t,w,h,css])=>`<span class="tp" style="left:${px(l)};top:${px(t)};width:${px(w)};height:${px(h)};${css}"></span>`).join('');
+  const tp=tape?`<span class="tp" style="left:${px(26.9)};top:${px(-7.7)};width:${px(42.2)};height:${px(14.4)};background:rgba(255,255,255,.72);box-shadow:0 1px 2px rgba(0,0,0,.08);transform:rotate(-4deg)"></span>`:'';
+  return `<span class="tally" data-mood="${mood}" style="width:${size}px;height:${size}px;background:${PAPER[paper]};border-radius:${px(6.7)} ${px(6.7)} ${px(6.7)} ${px(25)};box-shadow:0 1px 1px rgba(28,25,23,.06),0 ${px(21.1)} ${px(34.6)} -${px(19.2)} rgba(28,25,23,.4);transform:rotate(${tilt}deg)">${tp}${parts}</span>`;
+}
+function paintTally(el,mood,paper,anim){
+  const [size,,,tilt,tape]=(el.dataset.tally||'48').split(',');
+  el.dataset.tally=[size,mood,paper||MOOD_PAPER[mood],tilt||-4,tape??''].join(',');
+  el.innerHTML=tally(+size,mood,paper,+(tilt||-4),tape===''||tape===undefined?undefined:tape==='1');
+  if(anim){const t=el.firstChild;t.classList.add(anim);}
+}
+function initTallies(){$$('[data-tally]').forEach(el=>{const [size,mood,paper,tilt,tape]=el.dataset.tally.split(',');el.innerHTML=tally(+size,mood,paper,+(tilt||-4),tape===undefined||tape===''?undefined:tape==='1');});}
+initTallies();
+const mb=$('#mbIcon'); function setMb(mood){mb.innerHTML=tally(17,mood,undefined,-4,false);if(mood==='listening')mb.firstChild.classList.add('t-bob');if(mood==='working')mb.firstChild.classList.add('t-wiggle');}
+setMb('hello');
+const T=(mood,paper,anim,size=32,tilt=-4)=>`<span class="tslot">${tally(size,mood,paper,tilt,false).replace('class="tally"',`class="tally ${anim||''}"`)}</span>`;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+function go(v){$$('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));$$('.view').forEach(x=>x.classList.toggle('on',x.id==='v-'+v));aiClose();$('#dropdown').classList.remove('on');}
+$$('#tabs button').forEach(b=>b.onclick=()=>go(b.dataset.v));
+
+/* ---------- scripted data ---------- */
+const SAYINGS=[
+  {raw:"um so quick update uh the copy is done and uh the hero video should land like this afternoon so we're you know on track for thursday",
+   clean:"Quick update: copy's done and the hero video should land this afternoon, so we're on track for Thursday."},
+  {raw:"can you uh send me the figma link new line and also the uh the staging url thanks",
+   clean:"Can you send me the Figma link?\nAlso the staging URL, thanks."},
+  {raw:"heads up i'm um gonna be like ten minutes late to standup",
+   clean:"Heads up, I'm going to be 10 minutes late to standup."}
+];
+const AI_NO_CTX=[
+ {say:"write a quick email to sara saying the landing page will be ready by thursday and ask if she needs the figma file",
+  out:"Hi Sara,\n\nQuick update: the landing page will be ready by Thursday.\n\nDo you need the Figma file before then? Happy to send it over.\n\nThanks,\nDanish",
+  refine:{say:"make it shorter and more casual",out:"Hey Sara! Landing page will be ready Thursday 🙌 Want the Figma file before then?"}},
+ {say:"turn this into a standup update, so yesterday i was on the stripe webhooks they're mostly done but failing on staging, today i'll fix that and then start the admin dashboard, no blockers",
+  out:"Yesterday: Stripe webhooks, mostly done but still failing on staging.\nToday: Fix the staging webhook issue, then start the admin dashboard.\nBlockers: None.",
+  refine:{say:"make it a single line",out:"Webhooks nearly done (fixing a staging bug today), then starting the admin dashboard. No blockers."}},
+ {say:"what's the shortcut to screenshot a single window on a mac", answer:true,
+  out:"Press ⌘ ⇧ 4, then Space, then click the window.\n\nHold ⌥ while you click to leave out the window shadow.",
+  refine:{say:"and copy it instead of saving",out:"Press ⌘ ⌃ ⇧ 4, then Space, then click the window. It goes to your clipboard instead of the desktop."}},
+];
+const AI_CTX={
+ p1:[
+  {say:"make this polite but firm",out:"Unfortunately we won't make Friday. We're still waiting on the API from your side, which we flagged a couple of weeks ago. Happy to agree a new date together.",
+   refine:{say:"a bit warmer",out:"Unfortunately Friday won't be possible. We're still waiting on the API from your side (we mentioned it a couple of weeks back). Totally understand things slip, so let's pick a new date that works for both of us."}},
+  {say:"is this too rude?",answer:true,out:"A little. “It's not really on us” reads as blame, and “honestly” sounds frustrated.\n\nTry: “We flagged this two weeks ago, so let's agree on a new date together.”",
+   refine:{say:"rewrite it then",out:"We can't hit Friday because the API on your side isn't working yet. We flagged it two weeks ago, so let's agree on a new date together."}},
+ ],
+ p2:[
+  {say:"turn this into bullet points",out:"One extra week to finish:\n• Integration testing\n• Payment flow\n• Admin dashboard\nThen: deploy to production + hand over docs",
+   refine:{say:"add rough days to each",out:"One extra week to finish:\n• Integration testing (2 days)\n• Payment flow (2 days)\n• Admin dashboard (1 day)\nThen: deploy to production + hand over docs"}},
+ ]
+};
+let sayIdx=0, aiIdx=0, ctxIdx={};
+
+/* ---------- HUD / toast ---------- */
+const hud=$('#hud');
+function hudShow(html){hud.innerHTML=html;hud.classList.add('on');}
+function hudHide(){hud.classList.remove('on');}
+const MIC='<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-2.1A7 7 0 0 0 19 12h-2Z"/></svg>';
+const SPARK='<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2l2.2 6.3L20.5 10l-6.3 2.2L12 18.5l-2.2-6.3L3.5 10l6.3-1.7z"/></svg>';
+let waveTimer, secTimer, t0=0;
+function startWave(){clearInterval(waveTimer);setMb('listening');
+  waveTimer=setInterval(()=>{$$('#hud .wave i').forEach(b=>b.style.height=(4+Math.random()*18)+'px')},90);}
+function stopWave(){clearInterval(waveTimer);clearInterval(secTimer);setMb('working');}
+let toastT;
+function toast(html,ms=2600,mood='ready'){const t=$('#toast');t.innerHTML=tally(22,mood,undefined,-4,false).replace('class="tally"','class="tally t-pop"')+'<span>'+html.replace(/^✓\s*/,'')+'</span>';setMb(mood==='ready'?'ready':'hello');setTimeout(()=>{if(!holding)setMb('hello')},ms);t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),ms);}
+
+/* ---------- selection ---------- */
+let savedRange=null, lastFocus=null;
+document.addEventListener('selectionchange',()=>{
+  const s=getSelection(); if(!s.rangeCount) return;
+  const r=s.getRangeAt(0); const n=r.commonAncestorContainer; const host=n.nodeType===1?n:n.parentElement;
+  if(host && host.closest && host.closest('#doc,#composer,#tryit')){savedRange=r.cloneRange();lastFocus=host.closest('#doc,#composer,#tryit');}
+});
+function liveSelection(){const s=getSelection();if(!s.rangeCount||s.isCollapsed)return '';const n=s.getRangeAt(0).commonAncestorContainer;const h=n.nodeType===1?n:n.parentElement;return h&&h.closest('#doc')?s.toString().trim():'';}
+function selParaId(){if(!savedRange)return null;let n=savedRange.startContainer;n=n.nodeType===1?n:n.parentElement;const p=n.closest('p');return p?p.id:null;}
+function placeCaretEnd(el){const r=document.createRange();r.selectNodeContents(el);r.collapse(false);const s=getSelection();s.removeAllRanges();s.addRange(r);}
+async function typeInto(el,text){el.focus();const base=el.innerText.trim();const pre=base?base+' ':'';let acc='';for(const w of text.split(/(\s+)/)){acc+=w;el.innerText=pre+acc;placeCaretEnd(el);await sleep(26);}}
+function insertAtRange(text){if(!savedRange)return;savedRange.deleteContents();savedRange.insertNode(document.createTextNode(text+' '));}
+function replaceSelection(text){
+  if(!savedRange)return; const r=savedRange; r.deleteContents();
+  const span=document.createElement('span'); span.className='flash'; span.style.whiteSpace='pre-wrap'; span.textContent=text;
+  r.insertNode(span); savedRange=null; getSelection().removeAllRanges();
+  setTimeout(()=>span.replaceWith(document.createTextNode(text)),1500);
+}
+
+/* ---------- one key, two modes ---------- */
+let holding=false, mode='dictate', ctx='', ctxPid=null;
+function hudListening(){
+  if(mode==='ai'){
+    const chip = ctx ? `<span class="chip">📎 ${ctx.split(/\s+/).length} words selected</span>` : aiOpen()? `<span class="chip">refining</span>` : '';
+    hudShow(`${T('listening','lilac','t-bob')}<div class="wave">${'<i></i>'.repeat(16)}</div><span class="lbl">Ask AI</span>${chip}<span class="sub" id="sec"></span>`);
+  } else {
+    hudShow(`${T('listening','butter','t-bob')}<div class="wave">${'<i></i>'.repeat(18)}</div><span class="lbl">Listening</span><span class="sub">+⇧ for AI</span><span class="sub" id="sec"></span>`);
+  }
+  startWave();
+}
+function talkStart(m){
+  if(holding) return; holding=true; $('#dropdown').classList.remove('on');
+  if(!aiOpen()){ctx=liveSelection(); ctxPid=ctx?selParaId():null;}
+  mode = aiOpen() ? 'ai' : m;           // while a result card is open, talking refines it
+  const inTry=$('#v-onboard').classList.contains('on');
+  if(inTry){mode='dictate';document.body.appendChild(hud);hud.style.position='fixed';}
+  $('#holdBtn').classList.toggle('hold',mode==='dictate'); $('#aiBtn').classList.toggle('hold',mode==='ai'); $('#aiBtn').classList.toggle('ai',mode==='ai');
+  hudListening(); t0=Date.now();
+  secTimer=setInterval(()=>{const e=$('#sec');if(e)e.textContent='0:'+String(Math.floor((Date.now()-t0)/1000)).padStart(2,'0')},250);
+}
+function switchToAI(){ if(!holding||mode==='ai'||$('#v-onboard').classList.contains('on')) return; mode='ai'; $('#holdBtn').classList.remove('hold'); $('#aiBtn').classList.add('hold','ai'); clearInterval(waveTimer); hudListening(); }
+async function talkEnd(){
+  if(!holding) return; holding=false; stopWave(); $('#holdBtn').classList.remove('hold'); $('#aiBtn').classList.remove('hold','ai');
+  hudShow(`${T('working','sky','t-wiggle')}<span class="lbl">Writing it down…</span><span class="sub">on-device</span>`);
+  await sleep(500);
+  if(mode==='ai') return aiRun();
+  const s=SAYINGS[sayIdx++%SAYINGS.length];
+  hudHide(); if(hud.parentElement===document.body){setTimeout(()=>{hud.style.position='';$('#desk').appendChild(hud)},250)}
+  const inTry=$('#v-onboard').classList.contains('on');
+  if(inTry){ await typeInto($('#tryit'),s.clean); paintTally($('#tryTally'),'ready','mint','t-pop'); $('#trySay').textContent='See? That was me. Nice to meet you!'; setMb('hello'); }
+  else if(lastFocus && lastFocus.id==='doc' && savedRange) insertAtRange(s.clean);
+  else await typeInto($('#composer'),s.clean);
+  $('#ddLast').textContent=s.clean.slice(0,70)+(s.clean.length>70?'…':'');
+  const fill=/\b(um|uh|like|you know|so)\b/gi;
+  $('#log').style.display='block';
+  $('#logRaw').innerHTML='“'+s.raw.replace(fill,m=>`<s>${m}</s>`)+'”';
+  $('#logClean').textContent='→ '+s.clean;
+  if(!inTry) toast(`✓ Inserted ${s.clean.split(/\s+/).length} words`,1800);
+}
+
+/* ---------- AI result card ---------- */
+let cur=null, aiText='', usingCtx=false;
+function aiOpen(){return $('#aicard').classList.contains('on')}
+function aiClose(){$('#aicard').classList.remove('on');cur=null;if(!holding)setMb('hello');}
+async function aiRun(){
+  let ask,out;
+  if(aiOpen() && cur){ ask=cur.refine.say; out=cur.refine.out; }
+  else {
+    usingCtx=!!ctx;
+    if(ctx){
+      const list=AI_CTX[ctxPid]||[{say:'make this clearer',out:ctx.charAt(0).toUpperCase()+ctx.slice(1),refine:{say:'shorter',out:ctx.split(/(?<=[.!?])\s+/)[0]}}];
+      const i=ctxIdx[ctxPid]||0; ctxIdx[ctxPid]=i+1; cur=list[i%list.length];
+    } else cur=AI_NO_CTX[aiIdx++%AI_NO_CTX.length];
+    ask=cur.say; out=cur.out;
+  }
+  setMb('working');hudShow(`${T('working','lilac','t-wiggle')}<span class="lbl">On it…</span><span class="chip">“${ask}”</span>`);
+  await sleep(900); hudHide();
+  $('#aicard').classList.add('on');$('#aiTally').innerHTML=tally(30,cur.answer?'pointing':'ready',cur.answer?'sky':'mint',-5,false).replace('class="tally"','class="tally t-pop"');setMb('ready');
+  $('#aiAsk').innerHTML='“'+ask+'”'+(usingCtx?`<br><span style="font-style:normal;font-size:11.5px;color:var(--accent-ink)">📎 with your selection (${ctx.split(/\s+/).length} words)</span>`:'');
+  const primary = cur.answer ? 'Copy' : usingCtx ? 'Replace selection' : 'Insert';
+  $('#aiFoot').innerHTML=`<button class="btn pri" id="aiPri">${primary} <kbd>↵</kbd></button>`+
+    (cur.answer?`<button class="btn" id="aiIns">Insert</button>`:`<button class="btn" id="aiCopy">Copy</button>`)+
+    `<button class="btn" id="aiEsc">Esc</button><span class="hint">hold ⌥⇧ to refine</span>`;
+  $('#aiPri').onclick=()=>cur.answer?aiCopy():aiInsert();
+  if($('#aiIns')) $('#aiIns').onclick=aiInsert;
+  if($('#aiCopy')) $('#aiCopy').onclick=aiCopy;
+  $('#aiEsc').onclick=aiClose;
+  const b=$('#aiBody'); b.textContent=''; aiText=out;
+  for(const w of out.split(/(\s+)/)){b.textContent+=w;await sleep(22)}
+}
+function aiCopy(){navigator.clipboard?.writeText(aiText).catch(()=>{});aiClose();toast('Copied to clipboard');}
+async function aiInsert(){
+  const text=aiText, sel=usingCtx; aiClose();
+  if(sel){replaceSelection(text);toast('✓ Replaced selection <u>· ⌘Z to undo</u>');return;}
+  if(lastFocus && lastFocus.id==='doc' && savedRange) insertAtRange(text);
+  else {const c=$('#composer');c.innerText='';await typeInto(c,text);}
+  toast('✓ Inserted <u>· ⌘Z to undo</u>');
+}
+
+/* ---------- keys & buttons ---------- */
+let altDown=false, altTimer;
+document.addEventListener('keydown',e=>{
+  if(e.key==='Alt' && !e.repeat){e.preventDefault();altDown=true;const m=e.shiftKey?'ai':'dictate';altTimer=setTimeout(()=>{if(altDown)talkStart(m)},150);}
+  else if(e.key==='Shift' && altDown){ if(holding) switchToAI(); else {clearTimeout(altTimer);talkStart('ai');} }
+  else if(aiOpen() && !holding){
+    if(e.key==='Enter'){e.preventDefault();$('#aiPri').click();}
+    if(e.key==='Escape') aiClose();
+  }
+});
+document.addEventListener('keyup',e=>{if(e.key==='Alt'){altDown=false;clearTimeout(altTimer);talkEnd();}});
+function holdButton(btn,m){btn.addEventListener('pointerdown',e=>{e.preventDefault();talkStart(m)});['pointerup','pointerleave'].forEach(ev=>btn.addEventListener(ev,()=>talkEnd()));}
+holdButton($('#holdBtn'),'dictate'); holdButton($('#aiBtn'),'ai');
+document.addEventListener('mousedown',e=>{
+  if(!e.target.closest('#aicard')&&!e.target.closest('.dock-hint')&&!holding)aiClose();
+  if(!e.target.closest('#dropdown')&&!e.target.closest('#mbIcon'))$('#dropdown').classList.remove('on');
+});
+$('#mbIcon').onclick=()=>{$('#dropdown').classList.toggle('on');$('#mbIcon').classList.toggle('open')};
+$$('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
+
+/* ---------- onboarding ---------- */
+let ob=0;
+function setOb(i){ob=i;$$('.ob-page').forEach((p,j)=>p.classList.toggle('on',j===i));$$('#obSteps div').forEach((s,j)=>{s.classList.toggle('on',j===i);s.classList.toggle('done',j<i);s.querySelector('.n').textContent=j<i?'✓':j+1})}
+$$('[data-ob]').forEach(b=>b.onclick=()=>{const a=b.dataset.ob;if(a==='next')setOb(ob+1);if(a==='back')setOb(ob-1);if(a==='finish'){go('try');setOb(0);toast('Blurt is in your menu bar. Hold ⌥ anywhere.');}});
+$$('[data-grant]').forEach(b=>b.onclick=()=>{b.closest('.perm').classList.add('granted');const all=$$('.perm').every(p=>p.classList.contains('granted'));paintTally($('#permTally'),all?'ready':'hello',all?'mint':'butter','t-pop');$('#permSay').textContent=all?'Perfect, that\'s all I need!':'Nice, one more to go.';});
+$$('#models .model').forEach(m=>m.onclick=()=>{$$('#models .model').forEach(x=>x.classList.remove('on'));m.classList.add('on')});
+$('#dlBtn').onclick=async()=>{
+  const b=$('#dlBtn'); if(b.dataset.done){setOb(ob+1);return}
+  b.disabled=true; paintTally($('#dlTally'),'working','sky','t-wiggle'); $('#dlSay').textContent='Downloading… this only happens once.'; const mbs=+($('#models .model.on em').textContent.match(/(\d+) MB/)[1]);
+  for(let p=0;p<=100;p+=4){$('#dlBar').style.width=p+'%';$('#dlPct').textContent=p+'%';$('#dlLbl').textContent=`Downloading ${Math.round(mbs*p/100)} / ${mbs} MB`;await sleep(40)}
+  $('#dlLbl').textContent='✓ Installed and ready';paintTally($('#dlTally'),'ready','mint','t-pop');$('#dlSay').textContent='Got it! I can hear you now.'; b.textContent='Continue →'; b.dataset.done=1; b.disabled=false;
+};
+$$('[data-rec]').forEach(k=>k.onclick=()=>{k.classList.add('rec');const old=k.textContent;k.textContent='Press keys…';
+  const h=e=>{e.preventDefault();const parts=[];if(e.metaKey)parts.push('⌘');if(e.ctrlKey)parts.push('⌃');if(e.altKey)parts.push('⌥');if(e.shiftKey)parts.push('⇧');
+    if(!['Meta','Control','Alt','Shift'].includes(e.key))parts.push(e.key===' '?'Space':e.key.toUpperCase());
+    k.textContent=parts.join(' ')||old;k.classList.remove('rec');document.removeEventListener('keydown',h,true)};
+  document.addEventListener('keydown',h,true)});
+
+/* ---------- settings ---------- */
+$$('#setSide button').forEach(b=>b.onclick=()=>{$$('#setSide button').forEach(x=>x.classList.toggle('on',x===b));$$('.set-page').forEach(p=>p.classList.toggle('on',p.dataset.sp===b.dataset.s))});
+document.addEventListener('click',e=>{const t=e.target.closest('.tog');if(t)t.classList.toggle('on');const s=e.target.closest('.seg button');if(s){[...s.parentElement.children].forEach(x=>x.classList.toggle('on',x===s))}const en=e.target.closest('#engine button');if(en){$$('#engine button').forEach(x=>x.classList.toggle('on',x===en))}});
+
+</script>
+</body>
+</html>

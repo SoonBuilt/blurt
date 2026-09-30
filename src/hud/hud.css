@@ -1,0 +1,139 @@
+@import url("../styles/fonts.css");
+
+html,
+body.hud-body {
+  margin: 0;
+  background: transparent;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+.wrap {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 10px;
+  font-family: "Schibsted Grotesk Variable", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 480px;
+  padding: 8px 18px 8px 10px;
+  border-radius: 999px;
+  background: rgba(20, 19, 18, 0.88);
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+  white-space: nowrap;
+  animation: enter 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.pill.error {
+  white-space: normal;
+  border-radius: 20px;
+}
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+}
+
+.slot {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  margin: -4px 0;
+}
+.slot.bob .tally {
+  animation: bob 1.6s ease-in-out infinite;
+}
+.slot.wiggle .tally {
+  animation: wiggle 0.5s ease-in-out infinite;
+}
+.slot.pop .tally {
+  animation: pop 0.45s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+@keyframes bob {
+  50% {
+    translate: 0 -2px;
+  }
+}
+@keyframes wiggle {
+  0%,
+  100% {
+    rotate: -4deg;
+  }
+  50% {
+    rotate: 4deg;
+  }
+}
+@keyframes pop {
+  from {
+    scale: 0.6;
+  }
+}
+
+.wave {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 24px;
+}
+.wave i {
+  display: block;
+  width: 3px;
+  border-radius: 2px;
+  background: #fff;
+  transition: height 0.08s linear;
+}
+.ai .wave i {
+  background: #d9c7ff;
+}
+
+.lbl {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.lbl.err {
+  line-height: 1.4;
+  max-width: 400px;
+}
+.sub {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+.mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.chip {
+  background: rgba(255, 255, 255, 0.12);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chip.ctx {
+  color: #ffc9b3;
+  flex: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pill,
+  .slot .tally {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Blurt listens only while you hold the talk key, to turn your voice into text on your Mac.</string>
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>Blurt uses on-device speech recognition to turn your voice into text. Nothing is uploaded.</string>
+  <key>LSUIElement</key>
+  <true/>
+</dict>
+</plist>

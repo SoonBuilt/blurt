@@ -1,0 +1,58 @@
+[package]
+name = "blurt"
+version = "0.1.0"
+description = "Blurt: hold a key and talk. Clean text wherever you type, or ask AI."
+authors = ["soonbuilt"]
+edition = "2021"
+
+[lib]
+# The `_lib` suffix keeps the lib name distinct from the bin name (a Windows quirk,
+# see https://github.com/rust-lang/cargo/issues/8519).
+name = "blurt_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-api"] }
+tauri-plugin-opener = "2"
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+log = "0.4"
+env_logger = "0.11"
+parking_lot = "0.12"
+once_cell = "1"
+regex = "1"
+
+# Global hold-to-talk hotkeys: modifier-only, left/right aware, macOS + Windows
+handy-keys = "0.3.4"
+# Microphone capture, resampled to 16 kHz mono
+cpal = "0.16"
+rubato = "0.16"
+# On-device speech to text (Parakeet through ONNX Runtime)
+transcribe-rs = { version = "0.3.11", features = ["onnx"] }
+# Clipboard and synthetic paste/copy keystrokes
+arboard = "3"
+enigo = "0.6"
+# AI providers and model downloads
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "io-util"] }
+futures-util = "0.3"
+# API keys live in the OS keychain (macOS Keychain, Windows Credential Manager)
+keyring = { version = "3", features = ["apple-native", "windows-native"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.1" }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true
+
+[dev-dependencies]
+hound = "3.5"
