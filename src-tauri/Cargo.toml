@@ -1,6 +1,6 @@
 [package]
 name = "blurt"
-version = "0.1.0"
+version = "0.1.1"
 description = "Blurt: hold a key and talk. Clean text wherever you type, or ask AI."
 authors = ["soonbuilt"]
 edition = "2021"

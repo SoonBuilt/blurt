@@ -1,0 +1,4 @@
+# Link the C runtime statically on Windows, so users never have to install the
+# Visual C++ Redistributable. Verified green in CI before landing.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

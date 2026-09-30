@@ -1,5 +1,7 @@
+import { getVersion } from "@tauri-apps/api/app";
+import { isTauri } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { keyLabels, type DictationStyle, type Status } from "../lib/api";
 import { Tally } from "../tally/Tally";
 import { FamilyCards } from "./Family";
@@ -238,7 +240,7 @@ export default function SettingsView({
             </div>
             <p className="credits">
               Speech recognition: NVIDIA Parakeet TDT 0.6B v3 (CC BY 4.0). Tone: emotion2vec+ by Ma et al. (FunASR model licence). Turn detection: Pipecat Smart Turn v3.2 (BSD-2). Runs on ONNX
-              Runtime. Hotkeys and model plumbing build on Handy (MIT). Version 0.1.0.
+              Runtime. Hotkeys and model plumbing build on Handy (MIT). Version <Version />.
             </p>
           </div>
         )}
@@ -304,4 +306,14 @@ function GettingStarted({ status, setPage, onTour }: { status: Status; setPage: 
       </ul>
     </div>
   );
+}
+
+/** The real version from the bundle, so it can never drift from what was shipped. */
+function Version() {
+  const [v, setV] = useState("");
+  useEffect(() => {
+    if (!isTauri()) return;
+    getVersion().then(setV, () => {});
+  }, []);
+  return <>{v || "—"}</>;
 }

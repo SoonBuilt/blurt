@@ -1,3 +1,4 @@
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
 import { api, type AiProvider, type Pack, type Settings, type Status, type WritingProfile } from "../lib/api";
@@ -188,7 +189,20 @@ const ENGINES: { id: AiProvider; name: string; blurb: string; mac?: boolean }[] 
   { id: "apple", name: "Apple Intelligence", blurb: "Free and private, right on your Mac. Nothing to set up.", mac: true },
   { id: "ollama", name: "Ollama", blurb: "Free and private. Runs an open model on your computer." },
   { id: "anthropic", name: "Claude", blurb: "Your own Anthropic API key. The smartest option; you pay Anthropic." },
-  { id: "openai", name: "OpenAI-compatible", blurb: "Your own key for OpenAI, OpenRouter, Groq or any compatible API." },
+  { id: "openai", name: "Any other AI", blurb: "DeepSeek, OpenRouter, Groq, Mistral, xAI, LM Studio… anything with an OpenAI-compatible API. Your key, your choice." },
+];
+
+/** One-click setups for the common OpenAI-compatible providers. The URL is the part
+ * people can't guess; model names change often, so they stay editable. */
+const PRESETS: { name: string; url: string; model?: string; docs?: string }[] = [
+  { name: "DeepSeek", url: "https://api.deepseek.com/v1", model: "deepseek-chat", docs: "https://api-docs.deepseek.com" },
+  { name: "OpenRouter", url: "https://openrouter.ai/api/v1", model: "deepseek/deepseek-v4.1-flash", docs: "https://openrouter.ai/models" },
+  { name: "Groq", url: "https://api.groq.com/openai/v1", docs: "https://console.groq.com/docs/models" },
+  { name: "Mistral", url: "https://api.mistral.ai/v1", docs: "https://docs.mistral.ai/getting-started/models/" },
+  { name: "xAI", url: "https://api.x.ai/v1", docs: "https://docs.x.ai/docs/models" },
+  { name: "Together", url: "https://api.together.xyz/v1", docs: "https://docs.together.ai/docs/serverless-models" },
+  { name: "OpenAI", url: "https://api.openai.com/v1", model: "gpt-5-mini", docs: "https://platform.openai.com/docs/models" },
+  { name: "LM Studio", url: "http://localhost:1234/v1", docs: "https://lmstudio.ai/docs/app/api" },
 ];
 
 export function AiEngine({ status, refresh }: { status: Status; refresh: () => void }) {
@@ -257,6 +271,23 @@ export function AiEngine({ status, refresh }: { status: Status; refresh: () => v
         </div>
       )}
 
+      {ai.provider === "openai" && (
+        <div className="presets">
+          <span className="presets-label">Set it up for:</span>
+          {PRESETS.map((p) => (
+            <button
+              key={p.name}
+              className={ai.openai_url.replace(/\/$/, "") === p.url ? "on" : ""}
+              onClick={() =>
+                save((x) => ({ ...x, ai: { ...x.ai, openai_url: p.url, openai_model: p.model ?? x.ai.openai_model } }))
+              }
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {(ai.provider === "anthropic" || ai.provider === "openai") && (
         <div className="group">
           <label className="row">
@@ -291,14 +322,27 @@ export function AiEngine({ status, refresh }: { status: Status; refresh: () => v
               <label className="row">
                 <span className="t">
                   <b>Model</b>
+                  {(() => {
+                    const p = PRESETS.find((x) => ai.openai_url.replace(/\/$/, "") === x.url);
+                    return p?.docs ? (
+                      <span>
+                        Model names change often.{" "}
+                        <button className="linkish" onClick={() => openUrl(p.docs!)}>
+                          See {p.name}'s list ↗
+                        </button>
+                      </span>
+                    ) : (
+                      <span>Whatever your provider calls it.</span>
+                    );
+                  })()}
                 </span>
-                <input className="inp" defaultValue={ai.openai_model} onBlur={(e) => save((s) => ({ ...s, ai: { ...s.ai, openai_model: e.target.value.trim() } }))} />
+                <input className="inp" key={ai.openai_model} defaultValue={ai.openai_model} onBlur={(e) => save((s) => ({ ...s, ai: { ...s.ai, openai_model: e.target.value.trim() } }))} />
               </label>
               <label className="row">
                 <span className="t">
                   <b>Base URL</b>
                 </span>
-                <input className="inp" defaultValue={ai.openai_url} onBlur={(e) => save((s) => ({ ...s, ai: { ...s.ai, openai_url: e.target.value.trim() } }))} />
+                <input className="inp" key={ai.openai_url} defaultValue={ai.openai_url} onBlur={(e) => save((s) => ({ ...s, ai: { ...s.ai, openai_url: e.target.value.trim() } }))} />
               </label>
             </>
           )}

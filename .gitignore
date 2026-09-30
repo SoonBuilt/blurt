@@ -26,3 +26,7 @@ dist-ssr
 # Local UI preview build
 design/ui-preview
 design/voices/
+
+# local tooling caches
+.impeccable/
+**/.impeccable/

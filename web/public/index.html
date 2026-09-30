@@ -207,6 +207,14 @@ h2 .soft{color:var(--faint)}
 .req dd{margin:0;font-size:15.5px;color:var(--ink-2);line-height:1.5}
 .req dd code{font-family:var(--mono);font-size:13px;background:var(--panel);padding:1px 6px;border-radius:5px}
 .req-note{margin-top:18px;font-size:14px;color:var(--muted)}
+.steps{list-style:none;padding:0;margin:0;counter-reset:step;display:flex;flex-direction:column;gap:0}
+.steps li{counter-increment:step;position:relative;padding:16px 0 16px 40px;border-top:1px solid var(--line);font-size:15.5px;color:var(--ink-2);line-height:1.55;text-wrap:pretty}
+.steps li:first-child{border-top:0;padding-top:0}
+.steps li:last-child{padding-bottom:0}
+.steps li::before{content:counter(step);position:absolute;left:0;top:14px;width:24px;height:24px;border-radius:50%;background:var(--panel);border:1px solid var(--line);color:var(--muted);font-size:13px;font-weight:600;display:grid;place-items:center}
+.steps li:first-child::before{top:-2px}
+.steps li code{font-family:var(--mono);font-size:13px;background:var(--panel);padding:1px 6px;border-radius:5px}
+.sec-lede.center{margin:36px auto 0;text-align:center;max-width:560px}
 .faq{margin-top:36px;border-top:1px solid var(--line)}
 .faq details{border-bottom:1px solid var(--line);padding:4px 0}
 .faq summary{list-style:none;cursor:pointer;padding:18px 0;font-weight:600;font-size:1.08rem;display:flex;justify-content:space-between;gap:20px}
@@ -253,7 +261,7 @@ footer a:hover{color:var(--ink)}
       <h1>Hold a key.<br>Talk.<br><span class="soft">It's written.</span></h1>
       <p class="lede">Blurt turns your voice into clean text wherever your cursor is. Add <kbd data-k="ai">⇧</kbd> and your voice becomes a prompt for AI, with whatever you've highlighted as context.</p>
       <div class="cta" id="download" data-downloads></div>
-      <p class="cta-note" data-dl-note>Your voice is turned into text on your own computer. No account needed.</p>
+      <p class="cta-note" data-dl-note>Your voice is turned into text on your own computer. No account needed. <a href="#firstrun">Not signed yet &mdash; opening it the first time takes one extra click.</a></p>
     </div>
 
     <div class="stage-wrap">
@@ -385,12 +393,46 @@ Thanks Sara</div>
   </div>
 </section>
 
+<section id="firstrun">
+  <div class="wrap">
+    <p class="kicker reveal">The first thirty seconds</p>
+    <h2 class="reveal">Your computer will warn you. <span class="soft">Here's how to get past it.</span></h2>
+    <p class="sec-lede reveal">Blurt isn't signed yet. Apple charges $99 a year for that and Microsoft rather more, and we'd rather keep Blurt free. So the first time you open it, your computer will say it can't verify who made it. It only happens once.</p>
+
+    <div class="reqs">
+      <div class="req reveal" data-os="mac">
+        <h3><svg class="os-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.64c-.02-2.1 1.72-3.12 1.8-3.17-.98-1.44-2.51-1.64-3.05-1.66-1.3-.13-2.54.77-3.2.77-.66 0-1.68-.75-2.76-.73-1.42.02-2.73.83-3.46 2.1-1.48 2.56-.38 6.35 1.06 8.43.7 1.02 1.54 2.16 2.63 2.12 1.06-.04 1.46-.68 2.73-.68 1.28 0 1.64.68 2.76.66 1.14-.02 1.86-1.04 2.55-2.06.8-1.18 1.13-2.32 1.15-2.38-.03-.01-2.2-.85-2.21-3.35ZM14.27 6.47c.58-.71.98-1.69.87-2.67-.84.03-1.86.56-2.46 1.26-.54.62-1.01 1.62-.89 2.58.94.07 1.9-.48 2.48-1.17Z"/></svg> On a Mac</h3>
+        <ol class="steps">
+          <li>Open the <code>.dmg</code> and drag <b>Blurt</b> into your <b>Applications</b> folder.</li>
+          <li>Double-click Blurt. macOS will refuse, saying it can't check it for malicious software. That's expected &mdash; click <b>Done</b>.</li>
+          <li>Open <b>System Settings &rsaquo; Privacy &amp; Security</b>, scroll down to <b>Security</b>, and click <b>Open Anyway</b> next to Blurt. Confirm with your password or Touch ID.</li>
+          <li>Tally will ask for the <b>microphone</b> and <b>Accessibility</b>. Both are needed: one to hear you, one to type for you.</li>
+        </ol>
+        <p class="req-note">On macOS 13 or 14 it's quicker: Control-click Blurt in Applications, choose <b>Open</b>, then <b>Open</b> again. Apple removed that shortcut in macOS 15.</p>
+      </div>
+
+      <div class="req reveal" data-os="windows">
+        <h3><svg class="os-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.1 10.4 4v7.2H3V5.1Zm0 13.8 7.4 1.1v-7.1H3v6Zm8.3 1.2L21 21.5V12.9h-9.7v7.2Zm0-16.2v7.3H21V2.5l-9.7 1.4Z"/></svg> On Windows</h3>
+        <ol class="steps">
+          <li>Run the <code>.exe</code>. Windows may show a blue <b>&ldquo;Windows protected your PC&rdquo;</b> box.</li>
+          <li>Click <b>More info</b>, then <b>Run anyway</b>. The installer takes a few seconds and doesn't ask for admin rights.</li>
+          <li>If your antivirus asks too, choose to keep it. It's flagging the missing signature, not anything it found in the app.</li>
+          <li>Blurt lands in your tray, next to the clock. No permission prompts on Windows.</li>
+        </ol>
+        <p class="req-note">Nothing else to install. WebView2 is already on Windows 11, and the installer adds it on Windows 10.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
 <section id="faq">
   <div class="wrap">
     <p class="kicker reveal">Questions</p>
     <h2 class="reveal">Good to know</h2>
     <div class="faq reveal">
       <details><summary>Is Blurt really free?</summary><p>Yes. Dictation runs on your computer, so it costs nothing to run and there's nothing to subscribe to. Ask AI is free with Apple Intelligence or Ollama. If you choose Claude or OpenAI instead, you pay them directly with your own key.</p></details>
+      <details><summary>Why does my computer say Blurt isn&rsquo;t safe?</summary><p>Because it isn&rsquo;t signed. Apple and Microsoft charge a yearly fee to vouch for an app, and Blurt is free, so we haven&rsquo;t paid it yet. Your computer can&rsquo;t tell who made the app, so it warns you once. <a href="#firstrun">Opening it the first time</a> takes one extra click, and Blurt is signed properly the moment we can justify the fee.</p></details>
       <details><summary>Which key do I hold?</summary><p>Right <kbd>⌥ Option</kbd> on Mac and Right <kbd>Ctrl</kbd> on Windows, plus <kbd>Shift</kbd> to ask AI. You can pick a different key in Settings. Press <kbd>Esc</kbd> while holding to cancel.</p></details>
       <details><summary>Does it work in every app?</summary><p>Anywhere you can type: chat apps, email, docs, code editors, browsers. Blurt pastes the text for you, then puts back whatever you had copied.</p></details>
       <details><summary>What do I need?</summary><p>An Apple Silicon Mac on macOS 13 or later, or a 64-bit Windows 10 or 11 PC, plus about 1 GB of free space. The <a href="#requirements">requirements</a> have the full picture. Intel Macs aren’t supported.</p></details>
