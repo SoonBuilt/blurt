@@ -156,6 +156,7 @@ fn speak(
         *stream = Some(s);
     }
     // A fresh sink per answer: a stopped sink can't be reused reliably.
+    let out_rate = stream.as_ref().unwrap().config().sample_rate();
     let sink = Arc::new(Sink::connect_new(stream.as_ref().unwrap().mixer()));
     *sink_slot.lock() = Some(sink.clone());
 
@@ -188,7 +189,9 @@ fn speak(
         if !alive(gen) {
             return Ok(());
         }
-        sink.append(SamplesBuffer::new(1, rate, samples));
+        // Clean up the gaps, fade the edges, add a breath, and convert for the speakers.
+        let ready = super::polish::sentence(&samples, rate, out_rate, &sentence);
+        sink.append(SamplesBuffer::new(1, out_rate, ready));
     }
     while !sink.empty() && alive(gen) {
         std::thread::sleep(Duration::from_millis(40));

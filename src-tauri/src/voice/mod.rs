@@ -5,6 +5,7 @@
 //! - `turn`: knows when the user has finished talking (Smart Turn v3.2, BSD-2)
 
 mod mel;
+pub mod polish;
 pub mod premium;
 pub mod speaker;
 pub mod tone;
