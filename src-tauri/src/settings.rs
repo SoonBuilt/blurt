@@ -74,11 +74,18 @@ pub struct VoiceSettings {
     pub hands_free: bool,
     /// Ask AI remembers the last few exchanges for a few minutes (in memory only).
     pub memory: bool,
+    /// Keep the last 10 results, on disk, so nothing is lost if a paste goes nowhere.
+    #[serde(default = "yes")]
+    pub history: bool,
+}
+
+fn yes() -> bool {
+    true
 }
 
 impl Default for VoiceSettings {
     fn default() -> Self {
-        Self { tone_awareness: true, hands_free: true, memory: true }
+        Self { tone_awareness: true, hands_free: true, memory: true, history: true }
     }
 }
 

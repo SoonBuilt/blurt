@@ -5,9 +5,9 @@ import { renderAll, tally } from './tally.js';
  * switch from "coming soon" to real downloads. Nothing else needs to change. */
 const REPO = 'https://github.com/danishs360/blurt';
 const RELEASE = {
-  version: '0.1.1',
-  mac: `${REPO}/releases/download/v0.1.1/Blurt_0.1.1_aarch64.dmg`,
-  windows: `${REPO}/releases/download/v0.1.1/Blurt_0.1.1_x64-setup.exe`,
+  version: '0.1.2',
+  mac: `${REPO}/releases/download/v0.1.2/Blurt_0.1.2_aarch64.dmg`,
+  windows: `${REPO}/releases/download/v0.1.2/Blurt_0.1.2_x64-setup.exe`,
 };
 
 const $ = (s, r = document) => r.querySelector(s);

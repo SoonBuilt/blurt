@@ -10,9 +10,10 @@ use crate::keys::{KeyAction, Mode};
 use crate::models::{self, Pack};
 use crate::settings::{DictationStyle, Settings};
 use crate::tray::{self, Mood};
+use crate::history::{self, History};
 use crate::memory::Memory;
 use crate::voice::{tone::{Tone, ToneDetector}, turn};
-use crate::{ai, audio::Recorder, insert, insert::Delivered, stt::Transcriber, text};
+use crate::{ai, audio::Recorder, insert, insert::{Delivered, WhyCopied}, stt::Transcriber, text};
 use parking_lot::{Mutex, RwLock};
 use std::collections::VecDeque;
 use std::path::PathBuf;
@@ -34,6 +35,7 @@ pub struct Engine {
     pub settings: RwLock<Settings>,
     pub stt: Transcriber,
     pub memory: Memory,
+    pub history: History,
     /// The last few tones Tally heard, newest last (for the Smarts page).
     pub recent_tones: Mutex<VecDeque<(Tone, Instant)>>,
     tone: ToneDetector,
@@ -51,6 +53,7 @@ impl Engine {
         let settings = crate::settings::load(&config_dir);
         let level_app = app.clone();
         let recorder = Recorder::spawn(move |l| hud::level(&level_app, l));
+        let history = History::load(&config_dir);
         Arc::new(Self {
             app,
             data_dir,
@@ -58,6 +61,7 @@ impl Engine {
             settings: RwLock::new(settings),
             stt: Transcriber::new(),
             memory: Memory::new(),
+            history,
             recent_tones: Mutex::new(VecDeque::new()),
             tone: ToneDetector::new(),
             turn: turn::TurnDetector::new(),
@@ -259,11 +263,14 @@ impl Engine {
                 }
             };
             let delivered = insert::deliver(&self.app, &output, !settings.restore_clipboard)?;
+            if settings.voice.history {
+                self.history.add(history::Kind::Dictate, "", &output);
+            }
             let words = output.split_whitespace().count();
             return Ok(Outcome::Done(
                 match delivered {
                     Delivered::Pasted => format!("{words} word{}", if words == 1 { "" } else { "s" }),
-                    Delivered::Copied => copied_hint(),
+                    Delivered::Copied(why) => copied_hint(why),
                 },
                 tone,
             ));
@@ -279,11 +286,14 @@ impl Engine {
         if settings.voice.memory {
             self.memory.remember(&instruction, &reply);
         }
+        if settings.voice.history {
+            self.history.add(history::Kind::Ask, &instruction, &reply);
+        }
         // AI results are typed in and stay on the clipboard, so they're never lost.
         Ok(Outcome::Done(
             match insert::deliver(&self.app, &reply, true)? {
                 Delivered::Pasted => "Done · also on your clipboard".into(),
-                Delivered::Copied => copied_hint(),
+                Delivered::Copied(why) => copied_hint(why),
             },
             tone,
         ))
@@ -306,7 +316,10 @@ enum Outcome {
     Nothing,
 }
 
-fn copied_hint() -> String {
+fn copied_hint(why: WhyCopied) -> String {
     let key = if cfg!(target_os = "macos") { "⌘V" } else { "Ctrl+V" };
-    format!("Copied · press {key} (turn on Accessibility to paste for you)")
+    match why {
+        WhyCopied::NoAccessibility => format!("Copied · press {key} (turn on Accessibility to paste for you)"),
+        WhyCopied::NoTextField => format!("Copied · click where you want it and press {key}"),
+    }
 }

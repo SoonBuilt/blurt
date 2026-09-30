@@ -2,7 +2,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { isTauri } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEffect, useState } from "react";
-import { keyLabels, type DictationStyle, type Status } from "../lib/api";
+import { api, keyLabels, TALK_KEYS, type DictationStyle, type HistoryEntry, type Status } from "../lib/api";
 import { Tally } from "../tally/Tally";
 import { FamilyCards } from "./Family";
 import { AiEngine, Permissions, ToneAwareness, ToneReading, Toggle, useSettings, VoiceModel, WritingStyle } from "./parts";
@@ -12,22 +12,12 @@ const PAGES = [
   { id: "voice", label: "Voice", icon: "🎙" },
   { id: "smarts", label: "Smarts", icon: "🧠" },
   { id: "style", label: "Your style", icon: "✍️" },
+  { id: "history", label: "History", icon: "🕘" },
   { id: "ai", label: "AI engine", icon: "✨" },
   { id: "about", label: "About", icon: "👋" },
 ] as const;
 export type Page = (typeof PAGES)[number]["id"];
 
-const MAC_TALK_KEYS = [
-  { v: "OptRight", l: "Right ⌥ Option" },
-  { v: "OptLeft", l: "Left ⌥ Option" },
-  { v: "CmdRight", l: "Right ⌘ Command" },
-  { v: "CtrlRight", l: "Right ⌃ Control" },
-];
-const WIN_TALK_KEYS = [
-  { v: "CtrlRight", l: "Right Ctrl" },
-  { v: "CtrlLeft", l: "Left Ctrl" },
-  { v: "OptRight", l: "Right Alt" },
-];
 
 export default function SettingsView({
   status,
@@ -47,7 +37,7 @@ export default function SettingsView({
   const save = useSettings(status, refresh);
   const s = status.settings;
   const mac = status.platform === "macos";
-  const keys = keyLabels(status.platform);
+  const keys = keyLabels(status.platform, s.talk_key);
   const needsAttention = !status.modelDownloaded || (mac && (!status.accessibility || status.microphone !== "allowed"));
 
   return (
@@ -89,16 +79,25 @@ export default function SettingsView({
               <label className="row">
                 <span className="t">
                   <b>Talk key</b>
-                  <span>Hold it to talk, let go to insert.</span>
+                  <span>Hold it to talk, let go to insert. No right-hand key on your keyboard? Any of these work.</span>
                 </span>
                 <select value={s.talk_key} onChange={(e) => save((x) => ({ ...x, talk_key: e.target.value }))}>
-                  {(mac ? MAC_TALK_KEYS : WIN_TALK_KEYS).map((k) => (
+                  {(mac ? TALK_KEYS.macos : TALK_KEYS.windows).map((k) => (
                     <option key={k.v} value={k.v}>
-                      {k.l}
+                      {k.long}
                     </option>
                   ))}
                 </select>
               </label>
+              {mac && s.talk_key === "Fn" && (
+                <p className="note">
+                  macOS gives <kbd>🌐 Fn</kbd> a job of its own — usually the emoji picker. Set <b>System Settings › Keyboard › “Press 🌐 to”</b> to{" "}
+                  <b>Do Nothing</b> and it's all yours.
+                </p>
+              )}
+              {!mac && s.talk_key === "OptRight" && (
+                <p className="note">On some European layouts Right Alt is AltGr, which types accented characters. If that's yours, pick another key.</p>
+              )}
               <div className="row">
                 <span className="t">
                   <b>AI key</b>
@@ -224,6 +223,26 @@ export default function SettingsView({
           </>
         )}
 
+        {page === "history" && (
+          <>
+            <div className="buddy small">
+              <Tally size={48} mood="ready" paper="mint" tilt={-5} />
+              <div className="bubble">The last 10 things I wrote for you. Handy if something went somewhere you didn't expect.</div>
+            </div>
+            <h2>History</h2>
+            <div className="group">
+              <div className="row">
+                <span className="t">
+                  <b>Keep my last 10</b>
+                  <span>Saved on this {mac ? "Mac" : "PC"} so nothing is lost if a result lands somewhere odd. Never leaves your computer.</span>
+                </span>
+                <Toggle label="Keep history" on={s.voice.history} onChange={(v) => save((x) => ({ ...x, voice: { ...x.voice, history: v } }))} />
+              </div>
+            </div>
+            <HistoryList on={s.voice.history} />
+          </>
+        )}
+
         {page === "about" && (
           <div className="about">
             <Tally size={96} mood="ready" tilt={-6} />
@@ -316,4 +335,72 @@ function Version() {
     getVersion().then(setV, () => {});
   }, []);
   return <>{v || "—"}</>;
+}
+
+/** Says how long ago something happened, in the plainest words. */
+function ago(at: number) {
+  const mins = Math.round((Date.now() - at) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+/** The last 10 results, newest first, each one copyable. */
+function HistoryList({ on }: { on: boolean }) {
+  const [items, setItems] = useState<HistoryEntry[]>([]);
+  const [copied, setCopied] = useState<number | null>(null);
+
+  const load = () => api.historyList().then(setItems, () => setItems([]));
+  useEffect(() => {
+    if (on) load();
+    else setItems([]);
+  }, [on]);
+
+  if (!on) return <p className="lead">History is off, so nothing is being kept.</p>;
+  if (!items.length)
+    return (
+      <div className="card empty">
+        <Tally size={40} mood="hello" tape={false} tilt={-5} />
+        <span>Nothing yet. Hold your talk key and say something, and it'll show up here.</span>
+      </div>
+    );
+
+  return (
+    <>
+      <div className="hist">
+        {items.map((it) => (
+          <div className="hist-item" key={it.at}>
+            <div className="hist-head">
+              <span className={`tag ${it.kind}`}>{it.kind === "ask" ? "✨ Ask AI" : "🎙 Dictated"}</span>
+              <span className="when">{ago(it.at)}</span>
+              <button
+                className="btn tiny"
+                onClick={async () => {
+                  await api.historyCopy(it.text);
+                  setCopied(it.at);
+                  setTimeout(() => setCopied((c) => (c === it.at ? null : c)), 1600);
+                }}
+              >
+                {copied === it.at ? "✓ Copied" : "Copy"}
+              </button>
+            </div>
+            {it.asked && <p className="hist-asked">“{it.asked}”</p>}
+            <p className="hist-text">{it.text}</p>
+          </div>
+        ))}
+      </div>
+      <button
+        className="btn danger"
+        onClick={async () => {
+          await api.historyClear();
+          load();
+        }}
+      >
+        Clear history
+      </button>
+    </>
+  );
 }

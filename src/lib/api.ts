@@ -2,6 +2,12 @@ import { invoke as tauriInvoke, isTauri } from "@tauri-apps/api/core";
 
 /* In a plain browser (design review with `pnpm dev`), answer with sample data instead of Rust. */
 const mock: Record<string, unknown> = {
+  history_list: [
+    { at: Date.now() - 60_000, kind: "ask", asked: "make this polite but firm", text: "Unfortunately we won't make Friday: we're still waiting on the API from your side. Happy to agree a new date together." },
+    { at: Date.now() - 22 * 60_000, kind: "dictate", asked: "", text: "The copy is done and the video lands this afternoon. Thanks Sara" },
+    { at: Date.now() - 3 * 3600_000, kind: "dictate", asked: "", text: "Remember to send the invoice before Friday." },
+  ],
+
   get_status: {
     platform: navigator.userAgent.includes("Mac") ? "macos" : "windows",
     settings: {
@@ -9,7 +15,7 @@ const mock: Record<string, unknown> = {
       onboarded: new URLSearchParams(location.search).has("settings"),
       ai: { provider: "apple", ollama_url: "http://localhost:11434", ollama_model: "qwen3:4b-instruct", anthropic_model: "claude-opus-5",
         openai_url: "https://api.openai.com/v1", openai_model: "gpt-5-mini", style: "" },
-      voice: { tone_awareness: true, hands_free: true, memory: true },
+      voice: { tone_awareness: true, hands_free: true, memory: true, history: true },
       profile: { name: "", role: "", tone: "", length: "", spelling: "", emoji: "", sign_off: "", extra: "" },
     },
     modelDownloaded: false, toneReady: false, recentTones: [["calm", 40], ["frustrated", 300], ["upbeat", 900]], accessibility: false, microphone: "unknown", appleAi: "", hasAnthropicKey: false, hasOpenaiKey: false,
@@ -38,6 +44,7 @@ export type VoiceSettings = {
   tone_awareness: boolean;
   hands_free: boolean;
   memory: boolean;
+  history: boolean;
 };
 
 export type Pack = "speech" | "tone";
@@ -89,11 +96,42 @@ export const api = {
   requestAccessibility: () => invoke<void>("request_accessibility"),
   openPrivacySettings: (pane: "microphone" | "accessibility" | "ai") => invoke<void>("open_privacy_settings", { pane }),
   finishOnboarding: () => invoke<void>("finish_onboarding"),
+  historyList: () => invoke<HistoryEntry[]>("history_list"),
+  historyClear: () => invoke<void>("history_clear"),
+  historyCopy: (text: string) => invoke<void>("history_copy", { text }),
 };
 
-/** Human labels for the talk key and AI modifier on this platform. */
-export function keyLabels(platform: Status["platform"]) {
-  return platform === "macos"
-    ? { talk: "Right ⌥", talkLong: "Right ⌥ Option", ai: "⇧", aiLong: "⇧ Shift" }
-    : { talk: "Right Ctrl", talkLong: "Right Ctrl", ai: "Shift", aiLong: "Shift" };
+export type HistoryEntry = { at: number; kind: "dictate" | "ask"; asked: string; text: string };
+
+/** Every talk key Blurt offers, and what to call it on each platform. */
+export const TALK_KEYS = {
+  macos: [
+    { v: "OptRight", short: "Right ⌥", long: "Right ⌥ Option" },
+    { v: "OptLeft", short: "Left ⌥", long: "Left ⌥ Option" },
+    { v: "Fn", short: "Fn", long: "Fn / 🌐 Globe" },
+    { v: "CmdRight", short: "Right ⌘", long: "Right ⌘ Command" },
+    { v: "CtrlRight", short: "Right ⌃", long: "Right ⌃ Control" },
+  ],
+  windows: [
+    { v: "CtrlRight", short: "Right Ctrl", long: "Right Ctrl" },
+    { v: "CtrlLeft", short: "Left Ctrl", long: "Left Ctrl" },
+    { v: "ShiftRight", short: "Right Shift", long: "Right Shift" },
+    { v: "OptLeft", short: "Left Alt", long: "Left Alt" },
+    { v: "OptRight", short: "Right Alt", long: "Right Alt" },
+  ],
+} as const;
+
+/**
+ * What to call the keys in the interface. Reads the key actually chosen, so the app
+ * never tells you to hold a key you've changed. When the talk key is Shift the AI
+ * modifier moves to Ctrl, matching what KeyConfig::parse does in Rust.
+ */
+export function keyLabels(platform: Status["platform"], talkKey?: string) {
+  const mac = platform === "macos";
+  const list = mac ? TALK_KEYS.macos : TALK_KEYS.windows;
+  const found = list.find((k) => k.v === talkKey) ?? list[0];
+  const shiftIsTalk = (talkKey ?? "").startsWith("Shift");
+  const ai = shiftIsTalk ? (mac ? "⌃" : "Ctrl") : mac ? "⇧" : "Shift";
+  const aiLong = shiftIsTalk ? (mac ? "⌃ Control" : "Ctrl") : mac ? "⇧ Shift" : "Shift";
+  return { talk: found.short, talkLong: found.long, ai, aiLong };
 }

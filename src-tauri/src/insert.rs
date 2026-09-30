@@ -21,19 +21,47 @@ enum Chord {
 pub enum Delivered {
     /// Typed into the focused app.
     Pasted,
-    /// Only copied: macOS isn't letting Blurt type yet (Accessibility is off).
-    Copied,
+    /// Only copied, for the given reason. The text is left on the clipboard.
+    Copied(WhyCopied),
+}
+
+/// Why Blurt copied instead of typing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WhyCopied {
+    /// macOS isn't letting Blurt type yet (Accessibility is off).
+    NoAccessibility,
+    /// Nothing was focused that takes text.
+    NoTextField,
 }
 
 /// Puts `text` into the focused app and, when `keep` is true, leaves it on the clipboard.
-/// Without Accessibility access it falls back to copying, so nothing is ever lost.
+///
+/// When there's nowhere for the text to land, it is copied instead and left there. That
+/// matters: pasting into nothing looks like it worked, and the clipboard restore below
+/// would then wipe the result. Copying costs the user one ⌘V; the alternative loses their
+/// words. For the same reason an uncertain answer from `focus_takes_text` means paste.
 pub fn deliver(app: &AppHandle, text: &str, keep: bool) -> anyhow::Result<Delivered> {
     if !can_type() {
         Clipboard::new()?.set_text(text.to_string())?;
-        return Ok(Delivered::Copied);
+        return Ok(Delivered::Copied(WhyCopied::NoAccessibility));
+    }
+    if focus_takes_text() == Some(false) {
+        Clipboard::new()?.set_text(text.to_string())?;
+        return Ok(Delivered::Copied(WhyCopied::NoTextField));
     }
     paste(app, text, !keep)?;
     Ok(Delivered::Pasted)
+}
+
+/// Whether the focused thing accepts typed text. `None` means we couldn't tell, which is
+/// treated as yes everywhere it's used.
+pub fn focus_takes_text() -> Option<bool> {
+    #[cfg(target_os = "macos")]
+    return mac_ax::focus_takes_text();
+    #[cfg(target_os = "windows")]
+    return win_focus::focus_takes_text();
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    return None;
 }
 
 /// Whether the OS lets Blurt send keystrokes to other apps.
@@ -241,6 +269,55 @@ mod mac_ax {
         (err == 0 && !out.is_null()).then_some(out)
     }
 
+    unsafe fn cf_string(value: CFTypeRef) -> Option<String> {
+        if CFGetTypeID(value) != CFStringGetTypeID() {
+            return None;
+        }
+        let len = CFStringGetLength(value);
+        let cap = len * 4 + 1;
+        let mut buf = vec![0u8; cap as usize];
+        (CFStringGetCString(value, buf.as_mut_ptr(), cap, UTF8) != 0).then(|| {
+            let end = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
+            String::from_utf8_lossy(&buf[..end]).into_owned()
+        })
+    }
+
+    /// Roles that take typed text, and roles that plainly don't. Anything unlisted is
+    /// left undecided, because guessing "no" on an app with patchy Accessibility support
+    /// would make Blurt copy when it could have typed.
+    const TAKES_TEXT: &[&str] = &["AXTextField", "AXTextArea", "AXComboBox", "AXSearchField"];
+    const NO_TEXT: &[&str] = &[
+        "AXWebArea", "AXGroup", "AXWindow", "AXApplication", "AXButton", "AXImage", "AXList",
+        "AXTable", "AXOutline", "AXScrollArea", "AXMenuItem", "AXMenuBar", "AXStaticText",
+        "AXRadioButton", "AXCheckBox", "AXTabGroup", "AXToolbar", "AXSlider", "AXUnknown",
+    ];
+
+    pub fn focus_takes_text() -> Option<bool> {
+        unsafe {
+            let system = AXUIElementCreateSystemWide();
+            if system.is_null() {
+                return None;
+            }
+            let focused = copy_attr(system, "AXFocusedUIElement");
+            CFRelease(system);
+            // Nothing at all has focus: the Finder, the desktop, a full-screen viewer.
+            let Some(focused) = focused else { return Some(false) };
+            let role = copy_attr(focused, "AXRole");
+            CFRelease(focused);
+            let role = role?;
+            let name = cf_string(role);
+            CFRelease(role);
+            let name = name?;
+            if TAKES_TEXT.contains(&name.as_str()) {
+                return Some(true);
+            }
+            if NO_TEXT.contains(&name.as_str()) {
+                return Some(false);
+            }
+            None
+        }
+    }
+
     pub fn selected_text() -> Option<String> {
         unsafe {
             let system = AXUIElementCreateSystemWide();
@@ -253,19 +330,65 @@ mod mac_ax {
             let value = copy_attr(focused, "AXSelectedText");
             CFRelease(focused);
             let value = value?;
-            let text = if CFGetTypeID(value) == CFStringGetTypeID() {
-                let len = CFStringGetLength(value);
-                let cap = len * 4 + 1;
-                let mut buf = vec![0u8; cap as usize];
-                (CFStringGetCString(value, buf.as_mut_ptr(), cap, UTF8) != 0).then(|| {
-                    let end = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
-                    String::from_utf8_lossy(&buf[..end]).into_owned()
-                })
-            } else {
-                None
-            };
+            let text = cf_string(value);
             CFRelease(value);
             text.filter(|t| !t.trim().is_empty())
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+mod win_focus {
+    //! Asks the foreground window's own thread what has keyboard focus.
+
+    #[repr(C)]
+    #[derive(Default)]
+    struct GuiThreadInfo {
+        cb_size: u32,
+        flags: u32,
+        hwnd_active: isize,
+        hwnd_focus: isize,
+        hwnd_capture: isize,
+        hwnd_menu_owner: isize,
+        hwnd_move_size: isize,
+        hwnd_caret: isize,
+        rc_caret: [i32; 4],
+    }
+
+    #[link(name = "user32")]
+    extern "system" {
+        fn GetForegroundWindow() -> isize;
+        fn GetWindowThreadProcessId(hwnd: isize, pid: *mut u32) -> u32;
+        fn GetGUIThreadInfo(thread: u32, info: *mut GuiThreadInfo) -> i32;
+    }
+
+    pub fn focus_takes_text() -> Option<bool> {
+        unsafe {
+            let fg = GetForegroundWindow();
+            if fg == 0 {
+                return Some(false); // nothing in front at all
+            }
+            let thread = GetWindowThreadProcessId(fg, std::ptr::null_mut());
+            if thread == 0 {
+                return None;
+            }
+            let mut info = GuiThreadInfo {
+                cb_size: std::mem::size_of::<GuiThreadInfo>() as u32,
+                ..Default::default()
+            };
+            if GetGUIThreadInfo(thread, &mut info) == 0 {
+                return None;
+            }
+            if info.hwnd_focus == 0 {
+                return Some(false); // the window has focus, but no control inside it does
+            }
+            // A caret is positive proof of a text cursor. Without one we can't tell:
+            // browsers and Electron apps draw their own, so this stays undecided.
+            const GUI_CARETBLINKING: u32 = 0x0000_0001;
+            if info.flags & GUI_CARETBLINKING != 0 {
+                return Some(true);
+            }
+            None
         }
     }
 }

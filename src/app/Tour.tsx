@@ -26,7 +26,7 @@ type Step = {
 };
 
 function steps(status: Status): Step[] {
-  const k = keyLabels(status.platform);
+  const k = keyLabels(status.platform, status.settings.talk_key);
   const mac = status.platform === "macos";
   return [
     {

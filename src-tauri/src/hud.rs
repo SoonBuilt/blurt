@@ -1,5 +1,6 @@
-//! The listening bar: a small floating window with Tally, shown at the bottom of the
-//! screen the user is working on. It never takes focus, so the app they're typing in
+//! The listening bar: a small floating window with Tally, tucked into the bottom-right
+//! of the screen the user is working on, sliding out from the edge when it has something
+//! to say. It never takes focus, so the app they're typing in
 //! stays active. On macOS it's a non-activating NSPanel that also floats over
 //! full-screen apps.
 
@@ -11,6 +12,8 @@ const WIDTH: f64 = 520.0;
 const HEIGHT: f64 = 240.0;
 /// Gap between the bar and the bottom of the screen's usable area (above the Dock/taskbar).
 const BOTTOM_GAP: f64 = 28.0;
+/// How far the window sits from the right edge of the screen.
+const RIGHT_GAP: f64 = 16.0;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "state", rename_all = "camelCase", rename_all_fields = "camelCase")]
@@ -122,7 +125,9 @@ fn place(app: &AppHandle) {
         area.size.width as f64 / scale,
         area.size.height as f64 / scale,
     );
-    let pos = LogicalPosition::new(x + (aw - WIDTH) / 2.0, y + ah - HEIGHT - BOTTOM_GAP);
+    // Hugging the right edge: the bar slides out from there, and stays clear of the
+    // middle of the screen where the user is actually working.
+    let pos = LogicalPosition::new(x + aw - WIDTH - RIGHT_GAP, y + ah - HEIGHT - BOTTOM_GAP);
     let _ = w.set_position(pos);
 }
 

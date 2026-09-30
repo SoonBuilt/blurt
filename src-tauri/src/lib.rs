@@ -7,6 +7,7 @@ mod engine;
 mod memory;
 pub mod models;
 pub mod voice;
+mod history;
 mod hud;
 pub mod insert;
 pub mod keys;
@@ -104,6 +105,23 @@ async fn request_microphone() -> bool {
     tauri::async_runtime::spawn_blocking(apple::request_mic)
         .await
         .unwrap_or(false)
+}
+
+#[tauri::command]
+fn history_list(engine: State<Arc<Engine>>) -> Vec<history::Entry> {
+    engine.history.list()
+}
+
+#[tauri::command]
+fn history_clear(engine: State<Arc<Engine>>) {
+    engine.history.clear();
+}
+
+/// Puts a past result back on the clipboard, so it can be pasted wherever it's wanted.
+#[tauri::command]
+fn history_copy(text: String) -> Result<(), String> {
+    use arboard::Clipboard;
+    Clipboard::new().and_then(|mut c| c.set_text(text)).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -262,6 +280,9 @@ pub fn run() {
             request_microphone,
             request_accessibility,
             open_privacy_settings,
+            history_list,
+            history_clear,
+            history_copy,
             finish_onboarding
         ])
         .build(tauri::generate_context!())
