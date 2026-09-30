@@ -140,12 +140,12 @@ fn open_privacy_settings(pane: String) {
 }
 
 #[tauri::command]
-fn finish_onboarding(app: AppHandle, engine: State<Arc<Engine>>) -> Result<(), String> {
+/// The tour was finished or skipped. The window stays open; nothing else changes.
+fn finish_onboarding(engine: State<Arc<Engine>>) -> Result<(), String> {
     let mut s = engine.settings.read().clone();
     s.onboarded = true;
     settings::save(&engine.config_dir, &s).map_err(|e| e.to_string())?;
     *engine.settings.write() = s;
-    hide_main(&app);
     Ok(())
 }
 

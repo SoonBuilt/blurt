@@ -2,18 +2,23 @@ import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useState } from "react";
 import { api, type Status } from "../lib/api";
 import { Tally } from "../tally/Tally";
-import Onboarding from "./Onboarding";
-import SettingsView from "./Settings";
+import SettingsView, { type Page } from "./Settings";
+import Tour, { markToured } from "./Tour";
 
 export default function App() {
   const [status, setStatus] = useState<Status | null>(null);
-  const [onboarding, setOnboarding] = useState<boolean | null>(null);
+  const [page, setPage] = useState<Page>("general");
+  const [touring, setTouring] = useState(false);
+  const [practiced, setPracticed] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
       const s = await api.status();
-      setStatus(s);
-      setOnboarding((prev) => (prev === null ? !s.settings.onboarded : prev));
+      setStatus((prev) => {
+        // First load: new users get Tally's tour (the app stays usable underneath).
+        if (!prev && !s.settings.onboarded) setTouring(true);
+        return s;
+      });
     } catch (e) {
       console.error(e);
     }
@@ -31,7 +36,7 @@ export default function App() {
     };
   }, [refresh]);
 
-  if (!status || onboarding === null) {
+  if (!status) {
     return (
       <div className="loading">
         <Tally size={56} mood="working" className="wiggle" />
@@ -39,9 +44,27 @@ export default function App() {
     );
   }
 
-  return onboarding ? (
-    <Onboarding status={status} refresh={refresh} onDone={() => setOnboarding(false)} />
-  ) : (
-    <SettingsView status={status} refresh={refresh} />
+  return (
+    <>
+      <SettingsView
+        status={status}
+        refresh={refresh}
+        page={page}
+        setPage={setPage}
+        onPracticed={() => setPracticed(true)}
+        onTour={() => setTouring(true)}
+      />
+      {touring && (
+        <Tour
+          status={status}
+          setPage={setPage}
+          practiced={practiced}
+          onClose={() => {
+            setTouring(false);
+            markToured().then(refresh);
+          }}
+        />
+      )}
+    </>
   );
 }

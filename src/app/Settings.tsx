@@ -2,6 +2,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { useState } from "react";
 import { keyLabels, type DictationStyle, type Status } from "../lib/api";
 import { Tally } from "../tally/Tally";
+import { FamilyCards } from "./Family";
 import { AiEngine, Permissions, ToneAwareness, ToneReading, Toggle, useSettings, VoiceModel, WritingStyle } from "./parts";
 
 const PAGES = [
@@ -12,7 +13,7 @@ const PAGES = [
   { id: "ai", label: "AI engine", icon: "✨" },
   { id: "about", label: "About", icon: "👋" },
 ] as const;
-type Page = (typeof PAGES)[number]["id"];
+export type Page = (typeof PAGES)[number]["id"];
 
 const MAC_TALK_KEYS = [
   { v: "OptRight", l: "Right ⌥ Option" },
@@ -26,8 +27,21 @@ const WIN_TALK_KEYS = [
   { v: "OptRight", l: "Right Alt" },
 ];
 
-export default function SettingsView({ status, refresh }: { status: Status; refresh: () => void }) {
-  const [page, setPage] = useState<Page>("general");
+export default function SettingsView({
+  status,
+  refresh,
+  page,
+  setPage,
+  onPracticed,
+  onTour,
+}: {
+  status: Status;
+  refresh: () => void;
+  page: Page;
+  setPage: (p: Page) => void;
+  onPracticed: () => void;
+  onTour: () => void;
+}) {
   const save = useSettings(status, refresh);
   const s = status.settings;
   const mac = status.platform === "macos";
@@ -42,7 +56,7 @@ export default function SettingsView({ status, refresh }: { status: Status; refr
           Blurt
         </div>
         {PAGES.map((p) => (
-          <button key={p.id} className={page === p.id ? "on" : ""} onClick={() => setPage(p.id)}>
+          <button key={p.id} data-tour={`nav-${p.id}`} className={page === p.id ? "on" : ""} onClick={() => setPage(p.id)}>
             <span>{p.icon}</span>
             {p.label}
             {p.id === "voice" && needsAttention && <i className="dot" />}
@@ -58,6 +72,15 @@ export default function SettingsView({ status, refresh }: { status: Status; refr
               <div className="bubble">
                 Hold <kbd>{keys.talk}</kbd> to dictate. Add <kbd>{keys.ai}</kbd> to ask AI. Highlight text first and I'll use it as context.
               </div>
+            </div>
+            <GettingStarted status={status} setPage={setPage} onTour={onTour} />
+            <div className="card practice" data-tour="practice">
+              <b>Try it here</b>
+              <textarea
+                className="tryit"
+                placeholder={`Click here, hold ${keys.talk} and say: “Hey, this is my first message with Blurt.”`}
+                onInput={(e) => (e.currentTarget.value.trim() ? onPracticed() : undefined)}
+              />
             </div>
             <h2>General</h2>
             <div className="group">
@@ -123,11 +146,15 @@ export default function SettingsView({ status, refresh }: { status: Status; refr
                 </div>
               </div>
             </div>
-            <VoiceModel status={status} refresh={refresh} />
+            <div data-tour="model">
+              <VoiceModel status={status} refresh={refresh} />
+            </div>
             {mac && (
               <>
                 <h3>Permissions</h3>
-                <Permissions status={status} />
+                <div data-tour="perms">
+                  <Permissions status={status} />
+                </div>
               </>
             )}
           </>
@@ -205,6 +232,10 @@ export default function SettingsView({ status, refresh }: { status: Status; refr
                 soonbuilt.com
               </button>
             </div>
+            <div className="about-family">
+              <h3>More from soonbuilt</h3>
+              <FamilyCards />
+            </div>
             <p className="credits">
               Speech recognition: NVIDIA Parakeet TDT 0.6B v3 (CC BY 4.0). Tone: emotion2vec+ by Ma et al. (FunASR model licence). Turn detection: Pipecat Smart Turn v3.2 (BSD-2). Runs on ONNX
               Runtime. Hotkeys and model plumbing build on Handy (MIT). Version 0.1.0.
@@ -212,6 +243,65 @@ export default function SettingsView({ status, refresh }: { status: Status; refr
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+/** A small, dismissable checklist on the General page until the basics are done. */
+function GettingStarted({ status, setPage, onTour }: { status: Status; setPage: (p: Page) => void; onTour: () => void }) {
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return localStorage.getItem("blurt.checklist.hidden") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const mac = status.platform === "macos";
+  const p = status.settings.profile;
+  const items: { label: string; done: boolean; page: Page }[] = [
+    ...(mac ? [{ label: "Allow the microphone and Accessibility", done: status.accessibility && status.microphone === "allowed", page: "voice" as Page }] : []),
+    { label: "Download the voice model", done: status.modelDownloaded, page: "voice" },
+    { label: "Tell Tally how you write", done: !!(p.name || p.tone || p.length || p.extra || p.sign_off), page: "style" },
+    { label: "Pick who does the AI thinking", done: status.settings.ai.provider !== "apple" || !status.appleAi, page: "ai" },
+  ];
+  const left = items.filter((i) => !i.done).length;
+  if (hidden) return null;
+  return (
+    <div className="card checklist">
+      <div className="row-flex">
+        <Tally size={34} mood={left ? "pointing" : "ready"} paper={left ? "sky" : "mint"} tape={false} tilt={-5} />
+        <span className="grow">
+          <b>{left ? `Getting started · ${items.length - left} of ${items.length}` : "You're all set!"}</b>
+          <span>{left ? "A few quick things and Blurt is fully yours." : "Hold the key anywhere and talk."}</span>
+        </span>
+        <button className="btn" onClick={onTour}>
+          ▶ Tour with Tally
+        </button>
+        <button
+          className="x"
+          aria-label="Hide checklist"
+          onClick={() => {
+            setHidden(true);
+            try {
+              localStorage.setItem("blurt.checklist.hidden", "1");
+            } catch {
+              /* ignore */
+            }
+          }}
+        >
+          ×
+        </button>
+      </div>
+      <ul>
+        {items.map((it) => (
+          <li key={it.label} className={it.done ? "done" : ""}>
+            <button onClick={() => setPage(it.page)}>
+              <span className="tick">{it.done ? "✓" : ""}</span>
+              {it.label}
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
