@@ -4,7 +4,7 @@
 //! | pack    | what it adds                            | size    | licence                         |
 //! |---------|-----------------------------------------|---------|---------------------------------|
 //! | speech  | Parakeet TDT 0.6B v3 + Smart Turn v3.2  | ~680 MB | CC-BY-4.0 (NVIDIA) / BSD-2      |
-//! | voice   | Pocket TTS int8 (Tally's voice)         | ~98 MB  | CC-BY-4.0 (Kyutai)              |
+//! | voice   | Kokoro-82M int8 (Tally's voice, Heart)  | ~132 MB | Apache-2.0 (hexgrad)            |
 //! | tone    | emotion2vec+ base (hearing your tone)   | ~373 MB | FunASR model licence (credit)   |
 //! | premium | Chatterbox Turbo 4-bit (expressive)     | ~491 MB | MIT (Resemble AI)               |
 
@@ -43,9 +43,9 @@ fn sources(pack: Pack) -> &'static [Source] {
             Source { url: "https://huggingface.co/pipecat-ai/smart-turn-v3/resolve/main/smart-turn-v3.2-cpu.onnx", dest: "smart-turn-v3.2-cpu.onnx", size: 8_700_000, archive: false },
         ],
         Pack::Voice => &[Source {
-            url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/sherpa-onnx-pocket-tts-int8-2026-01-26.tar.bz2",
-            dest: "pocket-tts",
-            size: 98_336_520,
+            url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-int8-multi-lang-v1_0.tar.bz2",
+            dest: "kokoro",
+            size: 132_303_094,
             archive: true,
         }],
         Pack::Tone => &[

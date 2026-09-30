@@ -9,8 +9,8 @@ becomes a prompt for AI, with anything you've highlighted as context. By soonbui
 | Speech to text | Parakeet TDT 0.6B v3, on-device | same |
 | Ask AI | Apple Intelligence (on-device), Ollama, Claude or OpenAI-compatible | Ollama, Claude or OpenAI-compatible |
 | Listening bar | non-activating NSPanel, floats over full-screen apps | always-on-top, non-focusable window |
-| Tally's voice | Pocket TTS (Kyutai), CC0 reference voice | same |
-| Expressive voice (Pro preview) | Chatterbox Turbo 4-bit (Resemble AI, MIT) | same |
+| Tally's voice | Kokoro-82M `af_heart`, slowed to 0.89x (Apache-2.0) | same |
+| Expressive voice (Pro preview) | Chatterbox Turbo 4-bit (Resemble AI, MIT), conditioned on Heart | same |
 | Tone awareness | emotion2vec+ base | same |
 | Hands-free | double-tap the talk key; Smart Turn v3.2 ends the turn | same |
 
@@ -51,8 +51,7 @@ every push, and drafts a GitHub release for `blurt-v*` tags. Builds are unsigned
 ## Credits
 
 Speech: NVIDIA Parakeet TDT 0.6B v3 (CC BY 4.0) via ONNX Runtime and transcribe-rs.
-Voice: Kyutai Pocket TTS (CC BY 4.0) with a CC0 voice from Kyutai's Unmute project; Resemble AI
-Chatterbox Turbo (MIT). Tone: emotion2vec+ (Ma et al., ACL 2024; FunASR model licence, attribution
+Voice: Kokoro-82M by hexgrad (Apache-2.0), voice af_heart; Resemble AI Chatterbox Turbo (MIT). Tone: emotion2vec+ (Ma et al., ACL 2024; FunASR model licence, attribution
 required). Turn detection: Pipecat Smart Turn v3.2 (BSD-2). Runtime: sherpa-onnx (Apache-2.0).
 Hotkeys (handy-keys) and several platform approaches come from Handy (MIT).
 

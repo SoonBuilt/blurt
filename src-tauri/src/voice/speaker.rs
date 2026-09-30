@@ -1,6 +1,7 @@
-//! Tally's voice. Pocket TTS clones Tally's voice from a short CC0 reference clip and
-//! speaks sentence by sentence, so the first words play while the rest is still being
-//! generated. Any key press (or Esc) interrupts it.
+//! Tally's voice: Kokoro's af_heart (Kokoro-82M, Apache-2.0), slowed a touch for a warm,
+//! unhurried pace. Speaks sentence by sentence, so the first words play while the rest is
+//! still being generated. Any key press (or Esc) interrupts it. The Pro voice (Chatterbox,
+//! see `premium`) is conditioned on the same Heart voice so Tally sounds the same.
 
 use crate::models::{self, Pack};
 use parking_lot::Mutex;
@@ -11,8 +12,10 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::time::Duration;
 
-/// Tally's reference voice (Kyutai "Unmute" website voice, CC0).
-const TALLY_VOICE: &[u8] = include_bytes!("../../resources/voices/tally.wav");
+/// Kokoro speaker id of af_heart in the multi-lang v1.0 voice table.
+const HEART: i32 = 3;
+/// >1 slows speech down; 1.12 gives Tally a relaxed, easygoing pace.
+const PACE: f32 = 1.12;
 
 enum Cmd {
     Speak { text: String, gen: u64, done: Box<dyn FnOnce() + Send> },
@@ -42,7 +45,6 @@ impl Speaker {
                 let mut engine: Option<sherpa_onnx::OfflineTts> = None;
                 let mut expressive: Option<super::premium::Premium> = None;
                 let mut stream: Option<OutputStream> = None;
-                let reference = read_reference();
                 while let Ok(cmd) = rx.recv() {
                     match cmd {
                         Cmd::Warm => {
@@ -67,7 +69,7 @@ impl Speaker {
                                 (true, Some(p)) => Voice::Premium(p),
                                 _ => Voice::Free(&mut engine),
                             };
-                            if let Err(e) = speak(&text, my_gen, &g, voice, &mut stream, &sk, &reference, &data_dir) {
+                            if let Err(e) = speak(&text, my_gen, &g, voice, &mut stream, &sk, &data_dir) {
                                 log::error!("speaking: {e:#}");
                             }
                             sp.store(false, Ordering::SeqCst);
@@ -116,28 +118,17 @@ impl Speaker {
     }
 }
 
-fn read_reference() -> (Vec<f32>, u32) {
-    let mut r = hound::WavReader::new(std::io::Cursor::new(TALLY_VOICE)).expect("bundled voice");
-    let rate = r.spec().sample_rate;
-    let samples = r.samples::<i16>().filter_map(Result::ok).map(|s| s as f32 / 32768.0).collect();
-    (samples, rate)
-}
-
 fn load<'a>(engine: &'a mut Option<sherpa_onnx::OfflineTts>, data_dir: &std::path::Path) -> anyhow::Result<&'a sherpa_onnx::OfflineTts> {
     if engine.is_none() {
-        let d = models::dir(data_dir, Pack::Voice).join("pocket-tts");
+        let d = models::dir(data_dir, Pack::Voice).join("kokoro");
         let p = |f: &str| Some(d.join(f).to_string_lossy().into_owned());
         let mut cfg = sherpa_onnx::OfflineTtsConfig::default();
-        cfg.model.pocket = sherpa_onnx::OfflineTtsPocketModelConfig {
-            lm_flow: p("lm_flow.int8.onnx"),
-            lm_main: p("lm_main.int8.onnx"),
-            encoder: p("encoder.onnx"),
-            decoder: p("decoder.int8.onnx"),
-            text_conditioner: p("text_conditioner.onnx"),
-            vocab_json: p("vocab.json"),
-            token_scores_json: p("token_scores.json"),
-            voice_embedding_cache_capacity: 4,
-        };
+        cfg.model.kokoro.model = p("model.int8.onnx");
+        cfg.model.kokoro.voices = p("voices.bin");
+        cfg.model.kokoro.tokens = p("tokens.txt");
+        cfg.model.kokoro.data_dir = p("espeak-ng-data");
+        cfg.model.kokoro.lexicon = p("lexicon-us-en.txt");
+        cfg.model.kokoro.length_scale = PACE;
         cfg.model.num_threads = std::thread::available_parallelism().map(|n| n.get().clamp(2, 4) as i32).unwrap_or(2);
         *engine = Some(sherpa_onnx::OfflineTts::create(&cfg).ok_or_else(|| anyhow::anyhow!("couldn't load Tally's voice"))?);
     }
@@ -157,7 +148,6 @@ fn speak(
     mut voice: Voice,
     stream: &mut Option<OutputStream>,
     sink_slot: &Arc<Mutex<Option<Arc<Sink>>>>,
-    reference: &(Vec<f32>, u32),
     data_dir: &std::path::Path,
 ) -> anyhow::Result<()> {
     if stream.is_none() {
@@ -188,11 +178,7 @@ fn speak(
             Voice::Free(engine) => {
                 let tts = load(engine, data_dir)?;
                 let g2 = gen.clone();
-                let cfg = sherpa_onnx::GenerationConfig {
-                    reference_audio: Some(reference.0.clone()),
-                    reference_sample_rate: reference.1 as i32,
-                    ..Default::default()
-                };
+                let cfg = sherpa_onnx::GenerationConfig { sid: HEART, speed: 1.0, ..Default::default() };
                 // Returning false from the callback aborts generation when interrupted.
                 let audio = tts.generate_with_config(&sentence, &cfg, Some(move |_: &[f32], _: f32| g2.load(Ordering::SeqCst) == my_gen));
                 let Some(audio) = audio else { continue };

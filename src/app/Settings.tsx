@@ -205,8 +205,8 @@ export default function SettingsView({ status, refresh }: { status: Status; refr
               </button>
             </div>
             <p className="credits">
-              Speech recognition: NVIDIA Parakeet TDT 0.6B v3 (CC BY 4.0). Tally's voice: Kyutai Pocket TTS (CC BY 4.0), with a CC0 voice from Kyutai's
-              Unmute project. Tone: emotion2vec+ by Ma et al. (FunASR model licence). Turn detection: Pipecat Smart Turn v3.2 (BSD-2). Runs on ONNX
+              Speech recognition: NVIDIA Parakeet TDT 0.6B v3 (CC BY 4.0). Tally's voice: Kokoro-82M by hexgrad (Apache-2.0), voice af_heart; expressive voice: Chatterbox
+              Turbo by Resemble AI (MIT). Tone: emotion2vec+ by Ma et al. (FunASR model licence). Turn detection: Pipecat Smart Turn v3.2 (BSD-2). Runs on ONNX
               Runtime via sherpa-onnx (Apache-2.0). Hotkeys and model plumbing build on Handy (MIT). Version 0.1.0.
             </p>
           </div>

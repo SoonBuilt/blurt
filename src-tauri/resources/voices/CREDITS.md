@@ -1,5 +1,9 @@
 # Tally's voice
 
-`tally.wav` is a reference clip that Pocket TTS clones Tally's voice from.
-Source: Kyutai "Unmute" website voices (`unmute-prod-website/default_voice.wav`),
-https://huggingface.co/kyutai/tts-voices, released by Kyutai as CC0 (public domain).
+Tally speaks with Kokoro's **af_heart** voice (Kokoro-82M by hexgrad, Apache-2.0),
+slowed to 0.89x for a warm, unhurried pace.
+
+- Free voice: Kokoro-82M int8 (via sherpa-onnx), speaker `af_heart`, length scale 1.12.
+- Expressive (Pro) voice: Chatterbox Turbo (Resemble AI, MIT) conditioned on
+  `tally-reference.wav`, a clip of the Kokoro af_heart voice, so Tally sounds the same
+  on both tiers. `tally.cbt` is that conditioning, precomputed with the q4 speech encoder.

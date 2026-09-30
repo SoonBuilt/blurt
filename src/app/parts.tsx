@@ -174,8 +174,8 @@ export function TallyVoice({ status, refresh }: { status: Status; refresh: () =>
     <PackCard
       pack="voice"
       title="Tally's voice"
-      blurb="Tally answers your questions out loud, in a natural voice made on your computer."
-      size="98 MB"
+      blurb="Tally answers your questions out loud in a warm, gentle voice, made right on your computer."
+      size="132 MB"
       ready={status.voiceReady}
       refresh={refresh}
     >

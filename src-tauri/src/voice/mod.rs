@@ -1,5 +1,5 @@
 //! Blurt's voice layer, all on-device:
-//! - `speaker`: Tally reads answers aloud (Pocket TTS, Kyutai, CC-BY-4.0; or the premium
+//! - `speaker`: Tally reads answers aloud (Kokoro af_heart, Apache-2.0; or the premium
 //!   Chatterbox Turbo voice, Resemble AI, MIT, in `premium`)
 //! - `tone`: hears how the user sounds (emotion2vec+, FunASR model licence)
 //! - `turn`: knows when the user has finished talking (Smart Turn v3.2, BSD-2)
