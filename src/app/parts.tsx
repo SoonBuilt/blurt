@@ -243,7 +243,7 @@ export function AiEngine({ status, refresh }: { status: Status; refresh: () => v
             <span className="t">
               <b>Model</b>
               <span>
-                Any model you've pulled, e.g. <code>ollama pull llama3.2:3b</code>
+                Recommended: <code>ollama pull qwen3:4b-instruct</code> (2.5 GB). Any model you've pulled works.
               </span>
             </span>
             <input className="inp" defaultValue={ai.ollama_model} onBlur={(e) => save((s) => ({ ...s, ai: { ...s.ai, ollama_model: e.target.value.trim() } }))} />

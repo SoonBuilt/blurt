@@ -27,6 +27,13 @@ pub enum AiProvider {
     Openai,
 }
 
+/// Qwen3-4B-Instruct: the best small model at following "reply with the text only", and it
+/// has no thinking mode at all, so it can never leak reasoning into someone's document.
+/// The `-instruct` suffix matters: plain `qwen3:4b` is the thinking build.
+pub const DEFAULT_OLLAMA_MODEL: &str = "qwen3:4b-instruct";
+/// What Blurt used to ship. Anyone still on it gets moved along.
+const OLD_OLLAMA_MODEL: &str = "llama3.2:3b";
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AiSettings {
@@ -49,7 +56,7 @@ impl Default for AiSettings {
                 AiProvider::Ollama
             },
             ollama_url: "http://localhost:11434".into(),
-            ollama_model: "llama3.2:3b".into(),
+            ollama_model: DEFAULT_OLLAMA_MODEL.into(),
             anthropic_model: "claude-opus-5".into(),
             openai_url: "https://api.openai.com/v1".into(),
             openai_model: "gpt-5-mini".into(),
@@ -187,6 +194,10 @@ pub fn load(dir: &PathBuf) -> Settings {
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok())
         .unwrap_or_default();
+    // Anyone who never changed the old default moves to the better model.
+    if s.ai.ollama_model == OLD_OLLAMA_MODEL {
+        s.ai.ollama_model = DEFAULT_OLLAMA_MODEL.into();
+    }
     // The old single "writing style" box moves into the questionnaire's free-text answer.
     if !s.ai.style.trim().is_empty() && s.profile.extra.trim().is_empty() {
         s.profile.extra = std::mem::take(&mut s.ai.style);

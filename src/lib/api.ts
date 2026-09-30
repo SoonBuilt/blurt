@@ -7,7 +7,7 @@ const mock: Record<string, unknown> = {
     settings: {
       talk_key: "OptRight", ai_modifier: "Shift", dictation_style: "clean", restore_clipboard: true, sounds: true,
       onboarded: new URLSearchParams(location.search).has("settings"),
-      ai: { provider: "apple", ollama_url: "http://localhost:11434", ollama_model: "llama3.2:3b", anthropic_model: "claude-opus-5",
+      ai: { provider: "apple", ollama_url: "http://localhost:11434", ollama_model: "qwen3:4b-instruct", anthropic_model: "claude-opus-5",
         openai_url: "https://api.openai.com/v1", openai_model: "gpt-5-mini", style: "" },
       voice: { tone_awareness: true, hands_free: true, memory: true },
       profile: { name: "", role: "", tone: "", length: "", spelling: "", emoji: "", sign_off: "", extra: "" },

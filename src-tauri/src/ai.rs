@@ -95,6 +95,22 @@ fn system_with_style(base: &str, profile: &WritingProfile, s: &AiSettings) -> St
     }
 }
 
+/// Blurt only wants finished text, never a model's reasoning. Our default model can't
+/// think at all, but users can pick any model, so we ask for thinking off too.
+/// `think` has to be a **top-level** field: Ollama silently ignores it inside `options`
+/// (https://github.com/ollama/ollama/issues/14793) and the model then burns the whole
+/// token budget thinking and returns nothing.
+fn ollama_body(model: &str, system: &str, user: &str) -> Value {
+    json!({
+        "model": model,
+        "stream": false,
+        "think": false,
+        // Qwen's recommended sampling for its instruct models; steady enough for rewrites.
+        "options": { "temperature": 0.7, "top_p": 0.8, "top_k": 20 },
+        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+    })
+}
+
 async fn complete(s: &AiSettings, system: &str, user: &str) -> anyhow::Result<String> {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(60))
@@ -102,11 +118,7 @@ async fn complete(s: &AiSettings, system: &str, user: &str) -> anyhow::Result<St
     let out = match s.provider {
         AiProvider::Apple => crate::apple::complete(system, user).await?,
         AiProvider::Ollama => {
-            let body = json!({
-                "model": s.ollama_model,
-                "stream": false,
-                "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-            });
+            let body = ollama_body(&s.ollama_model, system, user);
             let url = format!("{}/api/chat", s.ollama_url.trim_end_matches('/'));
             let resp = client.post(url).json(&body).send().await.map_err(|_| {
                 anyhow::anyhow!(
@@ -187,4 +199,25 @@ async fn checked(resp: reqwest::Response) -> anyhow::Result<Value> {
         anyhow::bail!("{} ({})", msg, status.as_u16());
     }
     Ok(v)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ollama_asks_for_no_thinking_at_the_top_level() {
+        let b = ollama_body("qwen3:4b-instruct", "sys", "hi");
+        // Inside `options` Ollama drops it and the reply comes back empty.
+        assert_eq!(b["think"], json!(false));
+        assert!(b["options"]["think"].is_null());
+        assert_eq!(b["options"]["temperature"], json!(0.7));
+    }
+
+    #[test]
+    fn default_ollama_model_cannot_think() {
+        // Plain `qwen3:4b` is the thinking build and would paste <think> blocks into
+        // whatever the user is writing.
+        assert!(AiSettings::default().ollama_model.ends_with("-instruct"));
+    }
 }
