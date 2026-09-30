@@ -578,12 +578,21 @@ select {
   pointer-events: none;
   z-index: 50;
 }
-.tour-tally {
+.tour-tally,
+.tour-bubble {
   position: absolute;
   left: 0;
   top: 0;
-  pointer-events: none;
+  pointer-events: auto;
   transition: transform 0.65s cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+/* until we know where the target is, stay out of the way */
+.tour-tally.unplaced,
+.tour-bubble.unplaced {
+  opacity: 0;
+}
+.tour-tally {
+  pointer-events: none;
 }
 .tour-tally > .tally {
   pointer-events: auto;
@@ -615,33 +624,28 @@ select {
   100% { rotate: 360deg; scale: 1; }
 }
 .tour-bubble {
-  position: absolute;
-  top: 0;
   width: 300px;
-  pointer-events: auto;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 14px 16px;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16);
-  animation: tour-bubble 0.3s 0.35s both cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-/* the tall "meet the family" bubble grows upwards so its buttons stay on screen */
 .tour-bubble.wide {
   width: 360px;
-  top: auto;
-  bottom: -8px;
 }
-.tour-bubble.to-right {
-  left: 80px;
+/* the flat corner points back at Tally */
+.tour-bubble.tail-tl {
   border-top-left-radius: 4px;
 }
-.tour-bubble.to-left {
-  right: 80px;
+.tour-bubble.tail-tr {
   border-top-right-radius: 4px;
 }
+.tour-bubble p {
+  animation: tour-bubble 0.3s 0.25s both;
+}
 @keyframes tour-bubble {
-  from { opacity: 0; translate: 0 6px; }
+  from { opacity: 0; translate: 0 4px; }
 }
 .tour-head {
   display: flex;
@@ -799,7 +803,26 @@ select {
   color: var(--faint);
 }
 .family.compact .fam {
-  padding: 8px 10px;
+  padding: 7px 10px;
+  gap: 10px;
+}
+/* in the tour bubble each app gets one tidy line */
+.family.compact .fam span span {
+  font-size: 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fam-all {
+  align-self: flex-start;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--accent-ink);
+  padding: 4px 2px;
+}
+.fam-all:hover {
+  text-decoration: underline;
 }
 .about-family {
   width: 100%;

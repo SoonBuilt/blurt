@@ -15,18 +15,26 @@ export const FAMILY: { name: string; line: string; kind: string; url: string; mo
   {
     name: "TallyReel Post",
     line: "Pin a video to the week. It posts itself, to 15 networks.",
-    kind: "Web + iOS + Android",
+    kind: "Web, iOS + Android",
     url: "https://app.tallyreel.com",
     mood: "ready",
     paper: "mint",
   },
   {
     name: "Round Zero",
-    line: "Mock job interviews with a live AI interviewer, by voice.",
-    kind: "Web",
+    line: "Carmen, an AI career coach who helps you land the job, change careers or grow.",
+    kind: "Web · 30 free minutes",
     url: "https://joinroundzero.com",
     mood: "listening",
     paper: "sky",
+  },
+  {
+    name: "LimeThreads",
+    line: "Custom design shirts, one or a hundred, delivered across Pakistan.",
+    kind: "Shop",
+    url: "https://limethreads.com",
+    mood: "hello",
+    paper: "lilac",
   },
 ];
 
@@ -52,6 +60,9 @@ export function FamilyCards({ compact = false }: { compact?: boolean }) {
           </span>
         </button>
       ))}
+      <button className="fam-all" onClick={() => open("https://soonbuilt.com")}>
+        See everything at soonbuilt.com ↗
+      </button>
     </div>
   );
 }

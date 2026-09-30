@@ -121,6 +121,71 @@ function steps(status: Status): Step[] {
 }
 
 const HOP_MS = 650;
+const GAP = 12;
+const EDGE = 10;
+const TALLY = 64;
+
+type Box = { x: number; y: number; w: number; h: number };
+type Spot = { tally: { x: number; y: number }; bubble: { x: number; y: number }; tail: "tl" | "tr" };
+
+const hits = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+const onScreen = (b: Box) => b.x >= EDGE && b.y >= EDGE && b.x + b.w <= window.innerWidth - EDGE && b.y + b.h <= window.innerHeight - EDGE;
+
+/** The scrollable panel a target lives in, if any. */
+function scroller(el: Element): HTMLElement | null {
+  let p = el.parentElement;
+  while (p) {
+    const o = getComputedStyle(p).overflowY;
+    if ((o === "auto" || o === "scroll") && p.scrollHeight > p.clientHeight + 4) return p;
+    p = p.parentElement;
+  }
+  return null;
+}
+
+/** Scrolls the target into the upper part of its panel so Tally has room underneath. */
+function makeRoom(el: Element) {
+  const sc = scroller(el);
+  if (!sc) return;
+  const want = sc.getBoundingClientRect().top + 24;
+  const by = el.getBoundingClientRect().top - want;
+  // Only scroll when the target sits low enough that the bubble wouldn't fit below it.
+  if (by > 40) sc.scrollTop += by;
+}
+
+/**
+ * Where Tally and its bubble can stand: below the target, above it, or beside it.
+ * The first spot that fits on screen **and leaves the target completely uncovered**
+ * wins, so Tally never sits on the very thing it's asking you to use.
+ */
+function findSpot(target: Box, bw: number, bh: number): Spot | null {
+  // Stay beside the target rather than drifting over the sidebar.
+  const clampX = (x: number) => Math.min(Math.max(Math.min(target.x, window.innerWidth - bw - TALLY - 34), x), window.innerWidth - EDGE - bw - TALLY - 10);
+  const pairs = (tx: number, ty: number): Spot[] => [
+    { tally: { x: tx, y: ty }, bubble: { x: tx + TALLY + 10, y: ty }, tail: "tl" },
+    { tally: { x: tx + bw + 10, y: ty }, bubble: { x: tx, y: ty }, tail: "tr" },
+  ];
+  const blockH = Math.max(TALLY, bh);
+  const candidates: Spot[] = [
+    // below the target, then above it: the natural reading order
+    ...pairs(clampX(target.x + 8), target.y + target.h + GAP),
+    ...pairs(clampX(target.x + 8), target.y - GAP - blockH),
+    // beside it, when there's room to the right or left
+    ...pairs(target.x + target.w + GAP, Math.max(GAP, target.y)),
+    ...pairs(target.x - GAP - bw - TALLY - 10, Math.max(GAP, target.y)),
+  ];
+  for (const c of candidates) {
+    const block: Box = {
+      x: Math.min(c.tally.x, c.bubble.x),
+      y: Math.min(c.tally.y, c.bubble.y),
+      w: bw + TALLY + 10,
+      h: blockH,
+    };
+    if (onScreen(block) && !hits(block, { ...target, x: target.x - 6, y: target.y - 6, w: target.w + 12, h: target.h + 12 })) {
+      return c;
+    }
+  }
+  return null;
+}
 
 export default function Tour({
   status,
@@ -135,12 +200,13 @@ export default function Tour({
 }) {
   const list = steps(status);
   const [i, setI] = useState(0);
-  const [pos, setPos] = useState<{ x: number; y: number; side: "left" | "right" }>(() => ({ x: window.innerWidth - 120, y: window.innerHeight - 170, side: "left" }));
+  const [spot, setSpot] = useState<Spot | null>(null);
   const [hopping, setHopping] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   const step = list[Math.min(i, list.length - 1)];
   const isDone = step.done ? step.done(status, practiced) : false;
   const glowRef = useRef<Element | null>(null);
+  const bubbleRef = useRef<HTMLDivElement | null>(null);
 
   const next = useCallback(() => {
     if (i >= list.length - 1) {
@@ -157,31 +223,47 @@ export default function Tour({
   }, [step.id, step.page, setPage]);
 
   useLayoutEffect(() => {
+    const corner = (): Spot => {
+      const bw = bubbleRef.current?.offsetWidth ?? 300;
+      const bh = bubbleRef.current?.offsetHeight ?? 170;
+      const y = window.innerHeight - GAP - Math.max(TALLY, bh);
+      return { tally: { x: window.innerWidth - GAP - TALLY, y }, bubble: { x: window.innerWidth - GAP - TALLY - 10 - bw, y }, tail: "tr" };
+    };
     const place = () => {
-      glowRef.current?.classList.remove("tour-glow");
       const el = step.target ? document.querySelector(step.target) : null;
-      if (el) {
-        el.classList.add("tour-glow");
+      if (glowRef.current !== el) {
+        glowRef.current?.classList.remove("tour-glow");
         glowRef.current = el;
-        const r = el.getBoundingClientRect();
-        const roomRight = window.innerWidth - r.right > 360;
-        const x = roomRight ? r.right + 18 : Math.max(340, r.left + Math.min(r.width, 420) - 70);
-        const y = roomRight ? r.top + Math.min(r.height / 2, 80) - 36 : Math.min(r.bottom + 12, window.innerHeight - 190);
-        setPos({ x, y: Math.max(16, y), side: roomRight ? "right" : "left" });
-      } else {
-        setPos({ x: window.innerWidth - 120, y: window.innerHeight - 170, side: "left" });
+        el?.classList.add("tour-glow");
       }
+      if (!el) {
+        setSpot(corner());
+        return;
+      }
+      const r = el.getBoundingClientRect();
+      const bw = bubbleRef.current?.offsetWidth ?? (step.family ? 360 : 300);
+      const bh = bubbleRef.current?.offsetHeight ?? 170;
+      setSpot(findSpot({ x: r.left, y: r.top, w: r.width, h: r.height }, bw, bh) ?? corner());
     };
     setHopping(true);
-    const t1 = setTimeout(place, 60); // let the page render first
+    // Bring the target into view first, then measure where everything ended up.
+    const t = step.target ? document.querySelector(step.target) : null;
+    if (t) {
+      t.scrollIntoView({ block: "nearest" });
+      makeRoom(t);
+    }
+    const t1 = setTimeout(place, 60);
     const t2 = setTimeout(() => setHopping(false), HOP_MS + 80);
     window.addEventListener("resize", place);
+    // The settings panel scrolls; follow the target when it moves.
+    window.addEventListener("scroll", place, true);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
     };
-  }, [step.id, step.target]);
+  }, [step.id, step.target, step.family]);
 
   useEffect(() => () => glowRef.current?.classList.remove("tour-glow"), []);
 
@@ -193,47 +275,50 @@ export default function Tour({
   }, [isDone, next]);
 
   const mood: TallyMood = celebrate || isDone ? "ready" : step.mood;
-  const bubbleLeft = pos.side === "right";
 
   return (
     <div className="tour" aria-live="polite">
       <div
-        className={`tour-tally ${hopping ? "hop" : "idle"} ${celebrate ? "cheer" : ""}`}
-        style={{ transform: `translate(${pos.x}px, ${pos.y}px)` }}
+        className={`tour-tally ${hopping ? "hop" : "idle"} ${celebrate ? "cheer" : ""} ${spot ? "" : "unplaced"}`}
+        style={spot ? { transform: `translate(${spot.tally.x}px, ${spot.tally.y}px)` } : undefined}
       >
         <Tally size={64} mood={mood} paper={isDone || celebrate ? "mint" : step.paper} tilt={-6} label="Tally, your guide" />
-        <div className={`tour-bubble ${bubbleLeft ? "to-right" : "to-left"} ${step.family ? "wide" : ""}`} key={step.id}>
-          <div className="tour-head">
-            <b>{isDone ? "✓ " + step.title : step.title}</b>
-            <span className="tour-count">
-              {i + 1}/{list.length}
-            </span>
-          </div>
-          <p>{isDone && step.doneSay ? step.doneSay : step.say}</p>
-          {step.family && <FamilyCards compact />}
-          <div className="tour-actions">
-            {step.id === "hello" ? (
-              <>
-                <button className="btn pri" onClick={next}>
-                  Show me around
+      </div>
+      <div
+        ref={bubbleRef}
+        className={`tour-bubble tail-${spot?.tail ?? "tl"} ${step.family ? "wide" : ""} ${spot ? "" : "unplaced"}`}
+        style={spot ? { transform: `translate(${spot.bubble.x}px, ${spot.bubble.y}px)` } : undefined}
+      >
+        <div className="tour-head">
+          <b>{isDone ? "✓ " + step.title : step.title}</b>
+          <span className="tour-count">
+            {i + 1}/{list.length}
+          </span>
+        </div>
+        <p key={step.id}>{isDone && step.doneSay ? step.doneSay : step.say}</p>
+        {step.family && <FamilyCards compact />}
+        <div className="tour-actions">
+          {step.id === "hello" ? (
+            <>
+              <button className="btn pri" onClick={next}>
+                Show me around
+              </button>
+              <button className="btn" onClick={() => onClose(true)}>
+                Maybe later
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="btn pri" onClick={next}>
+                {i === list.length - 1 ? "Finish" : isDone ? "Next →" : step.done ? "Skip this →" : "Next →"}
+              </button>
+              {i > 0 && i < list.length - 1 && (
+                <button className="btn ghost" onClick={() => onClose(true)}>
+                  End tour
                 </button>
-                <button className="btn" onClick={() => onClose(true)}>
-                  Maybe later
-                </button>
-              </>
-            ) : (
-              <>
-                <button className="btn pri" onClick={next}>
-                  {i === list.length - 1 ? "Finish" : isDone ? "Next →" : step.done ? "Skip this →" : "Next →"}
-                </button>
-                {i > 0 && i < list.length - 1 && (
-                  <button className="btn ghost" onClick={() => onClose(true)}>
-                    End tour
-                  </button>
-                )}
-              </>
-            )}
-          </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
