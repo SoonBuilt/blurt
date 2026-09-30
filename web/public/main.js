@@ -15,7 +15,8 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-const isWin = /Windows/.test(navigator.userAgent);
+// navigator.userAgentData is the reliable one; userAgent is the fallback for Safari/Firefox.
+const isWin = /Win/.test(navigator.userAgentData?.platform || '') || /Windows/.test(navigator.userAgent);
 const isTouch = matchMedia('(hover: none)').matches;
 const KEYS = isWin
   ? { talk: 'Ctrl', talkSide: 'RIGHT CTRL', ai: 'Shift', talkCode: 'ControlRight', talkKey: 'Control' }
@@ -32,12 +33,18 @@ const WIN = '<svg class="os-ico" viewBox="0 0 24 24" fill="currentColor" aria-hi
 function dlButton(os, primary) {
   const url = os === 'mac' ? RELEASE.mac : RELEASE.windows;
   const name = os === 'mac' ? 'Mac' : 'Windows';
-  const note = os === 'mac' ? 'Apple Silicon' : '64-bit';
-  const cls = `btn ${primary ? 'btn-pri' : 'btn-sec'}`;
+  const note = os === 'mac' ? 'Apple Silicon · macOS 13+' : '64-bit · Windows 10+';
   const icon = os === 'mac' ? APPLE : WIN;
-  return url
-    ? `<a class="${cls}" href="${url}">${icon}Download for ${name} <small>${note}</small></a>`
-    : `<span class="${cls} soon" aria-disabled="true">${icon}${name} <small>coming soon</small></span>`;
+  // The platform you're on gets the real button; the other is a quiet line underneath,
+  // so nobody downloads the wrong installer by accident.
+  if (!url) {
+    return primary
+      ? `<span class="btn btn-pri soon" aria-disabled="true">${icon}${name} <small>coming soon</small></span>`
+      : `<span class="dl-other soon">${name} coming soon</span>`;
+  }
+  return primary
+    ? `<a class="btn btn-pri btn-big" href="${url}">${icon}<span>Download for ${name}<small>${note}</small></span></a>`
+    : `<a class="dl-other" href="${url}">${icon}Also for ${name} <span class="dl-meta">${note}</span></a>`;
 }
 const order = isWin ? ['windows', 'mac'] : ['mac', 'windows'];
 $$('[data-downloads]').forEach((el) => (el.innerHTML = order.map((os, i) => dlButton(os, i === 0)).join('')));
