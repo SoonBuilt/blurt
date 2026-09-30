@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "nested-cards",
+        "value": "*",
+        "files": [
+          "apps/blurt/web/index.html"
+        ],
+        "createdAt": "2026-09-30T09:16:10.904Z",
+        "reason": "Claude: the hero demo is a mock app window sitting on a mock desktop; the nesting depicts real UI"
+      }
+    ]
+  }
+}

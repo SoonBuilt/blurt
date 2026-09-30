@@ -1,0 +1,24 @@
+<!doctype html><html><head><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500..800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;width:1200px;height:630px;font-family:'Schibsted Grotesk',sans-serif;background:radial-gradient(700px 420px at 85% 10%,#ffd8c4 0%,transparent 62%),radial-gradient(700px 500px at 100% 100%,#d9e2ff 0%,transparent 60%),#fbfbfa;display:flex;align-items:center;overflow:hidden;position:relative}
+.l{padding-left:90px;width:680px}
+.b{display:flex;align-items:center;gap:14px;font-weight:800;font-size:34px;letter-spacing:-.02em;margin-bottom:34px}
+.b small{font-size:20px;color:#62615d;font-weight:500}
+h1{margin:0;font-size:96px;line-height:.95;letter-spacing:-.045em;font-weight:800;color:#0d0d0c}
+h1 span{color:#8d8b86}
+p{margin:28px 0 0;font-size:26px;color:#62615d}
+.r{position:absolute;right:110px;top:150px}
+.pill{position:absolute;right:70px;top:430px;display:flex;align-items:center;gap:14px;padding:12px 26px 12px 14px;border-radius:99px;background:rgba(20,19,18,.92);color:#fff;font-size:22px;font-weight:500;box-shadow:0 14px 40px rgba(0,0,0,.25)}
+.wave{display:flex;gap:4px;align-items:center;height:30px}.wave i{width:4px;border-radius:2px;background:#fff}
+.tally{position:relative;display:inline-block}.tally .tp{position:absolute;display:block}
+</style></head><body>
+<div class="l"><div class="b"><span id="t1"></span>Blurt <small>by soonbuilt</small></div><h1>Hold a key.<br>Talk.<br><span>It's written.</span></h1><p>Free for Mac &amp; Windows</p></div>
+<div class="r" id="t2"></div>
+<div class="pill"><span id="t3"></span><span class="wave">
+<i style="height:8px"></i><i style="height:18px"></i><i style="height:26px"></i><i style="height:14px"></i><i style="height:22px"></i><i style="height:10px"></i><i style="height:24px"></i><i style="height:16px"></i><i style="height:28px"></i><i style="height:12px"></i><i style="height:20px"></i><i style="height:8px"></i></span>Listening</div>
+<script type="module">
+import { tally } from 'http://127.0.0.1:4399/soonbuilt/apps/blurt/web/public/tally.js';
+t1.innerHTML=tally({size:48,mood:'hello',tilt:-6,tape:false});
+t2.innerHTML=tally({size:230,mood:'hello',tilt:7});
+t3.innerHTML=tally({size:40,mood:'listening',paper:'butter',tilt:-5,tape:false,shadow:false});
+</script></body></html>

@@ -43,3 +43,10 @@ every push, and drafts a GitHub release for `blurt-v*` tags. Builds are unsigned
 
 Speech: NVIDIA Parakeet TDT 0.6B v3 (CC BY 4.0) via ONNX Runtime and transcribe-rs.
 Hotkeys (handy-keys) and several platform approaches come from Handy (MIT).
+
+## Website (blurt.soonbuilt.com)
+
+`web/public/` is the static site, served by the `blurt-site` Cloudflare Worker (assets only)
+on the `blurt.soonbuilt.com` custom domain. Deploy from the repo root with
+`pnpm deploy:blurt-site`. When installers are published, fill in `RELEASE` at the top of
+`web/public/main.js` and the download buttons go live.

@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blurt: hold a key and talk</title>
+<meta name="description" content="Blurt turns your voice into clean text wherever you type. Hold a key and talk, or add Shift and your voice becomes a prompt for AI. Free for Mac and Windows, and your voice stays on your computer.">
+<link rel="canonical" href="https://blurt.soonbuilt.com/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://blurt.soonbuilt.com/">
+<meta property="og:title" content="Blurt: hold a key and talk">
+<meta property="og:description" content="Clean text wherever you type. Add Shift and your voice becomes a prompt for AI. Free for Mac and Windows.">
+<meta property="og:image" content="https://blurt.soonbuilt.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#fbfbfa">
+<link rel="icon" type="image/png" sizes="128x128" href="./icon-128.png">
+<link rel="apple-touch-icon" href="./icon-256.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400..800&display=swap" rel="stylesheet">
+<script>document.documentElement.classList.add('js')</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Blurt",
+  "operatingSystem": "macOS, Windows",
+  "applicationCategory": "ProductivityApplication",
+  "description": "Hold a key and talk: clean text wherever you type, or a prompt for AI.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "publisher": { "@type": "Organization", "name": "soonbuilt", "url": "https://soonbuilt.com" }
+}
+</script>
+<style>
+:root{
+  --accent:#ff5a1f; --accent-ink:#c43d0c; --accent-wash:#fff1eb;
+  --ink:#0d0d0c; --ink-2:#2a2a28; --muted:#62615d; --faint:#8d8b86; --line:#e7e5e0;
+  --bg:#fbfbfa; --panel:#f2f1ee; --surface:#fff;
+  --lilac:#ebe1ff; --lilac-ink:#6b4fc7; --butter:#fff0b0; --mint:#d7f1e0; --sky:#dde8ff; --peach:#ffe2cc;
+  --font:'Schibsted Grotesk',system-ui,sans-serif; --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --wrap:1180px;
+}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+kbd{font-family:var(--font);font-weight:600;font-size:.78em;padding:.12em .5em;border-radius:6px;border:1px solid var(--line);background:var(--surface);box-shadow:0 1px 0 var(--line);white-space:nowrap}
+.wrap{max-width:var(--wrap);margin:0 auto;padding:0 24px}
+.tally{position:relative;display:inline-block;flex:none}
+.tally .tp{position:absolute;display:block}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+
+/* ---------- nav ---------- */
+.nav{position:sticky;top:0;z-index:40;background:rgba(251,251,250,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid transparent;transition:border-color .2s}
+.nav.scrolled{border-color:var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:14px;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;letter-spacing:-.02em;text-decoration:none}
+.by{font-size:13px;color:var(--muted);font-weight:500;text-decoration:none}
+.by:hover{color:var(--ink)}
+.nav .sp{flex:1}
+.nav-links{display:flex;gap:22px;font-size:15px;font-weight:500;color:var(--muted)}
+.nav-links a{text-decoration:none}
+.nav-links a:hover{color:var(--ink)}
+@media (max-width:760px){.nav-links{display:none}}
+
+.btn{display:inline-flex;align-items:center;gap:10px;padding:13px 20px;border-radius:12px;font-weight:600;font-size:15.5px;text-decoration:none;white-space:nowrap;transition:transform .15s,background .15s}
+.btn:active{transform:translateY(1px)}
+.btn-pri{background:var(--ink);color:#fff}
+.btn-pri:hover{background:var(--ink-2)}
+.btn-sec{background:var(--surface);border:1px solid var(--line)}
+.btn-sec:hover{border-color:var(--faint)}
+.btn small{font-weight:500;opacity:.6;font-size:12.5px}
+.btn.soon{cursor:default}
+.btn-sm{padding:9px 14px;font-size:14px;border-radius:10px}
+.os-ico{width:18px;height:18px;flex:none}
+
+/* ---------- hero ---------- */
+.hero{padding:64px 0 40px;position:relative}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:56px;align-items:center}
+@media (max-width:980px){.hero-grid{grid-template-columns:1fr;gap:40px}.hero{padding-top:40px}}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--accent-ink);background:var(--accent-wash);padding:6px 12px 6px 8px;border-radius:99px;margin-bottom:22px}
+.eyebrow i{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(255,90,31,.18)}
+h1{text-wrap:balance;font-size:clamp(3rem,7vw,5.6rem);line-height:.96;letter-spacing:-.045em;font-weight:800}
+h1 .soft{color:var(--faint)}
+.lede{font-size:clamp(1.1rem,1.7vw,1.3rem);color:var(--muted);margin:24px 0 30px;max-width:520px;line-height:1.55}
+.lede kbd{font-size:.8em}
+.cta{display:flex;gap:12px;flex-wrap:wrap}
+.cta-note{margin-top:16px;font-size:14px;color:var(--muted)}
+
+/* demo stage */
+.stage-wrap{position:relative}
+.stage{position:relative;border-radius:22px;padding:22px;background:
+  radial-gradient(600px 360px at 12% 0%,#ffd8c4 0%,transparent 62%),
+  radial-gradient(560px 400px at 100% 100%,#d9e2ff 0%,transparent 60%),
+  linear-gradient(140deg,#f5e9df,#e3e7f3);padding-bottom:78px;
+  box-shadow:0 30px 80px -30px rgba(40,25,10,.35)}
+.win{background:var(--surface);border-radius:14px;box-shadow:0 18px 40px -16px rgba(30,20,10,.3),0 0 0 .5px rgba(0,0,0,.14)}
+.win-bar{border-radius:14px 14px 0 0}
+.win-bar{display:flex;align-items:center;gap:7px;padding:12px 14px;border-bottom:1px solid var(--line);background:#fafaf9}
+.win-bar i{width:11px;height:11px;border-radius:50%;background:#ff5f57}
+.win-bar i:nth-child(2){background:#febc2e}.win-bar i:nth-child(3){background:#28c840}
+.win-bar b{margin-left:10px;font-size:13px;font-weight:600;color:var(--muted)}
+.msgs{padding:18px 18px 6px;display:flex;flex-direction:column;gap:14px;min-height:118px}
+.msg{display:flex;gap:10px;font-size:14.5px;line-height:1.45}
+.av{width:32px;height:32px;border-radius:9px;flex:none;display:grid;place-items:center;font-weight:700;font-size:12px;background:var(--sky)}
+.av.me{background:var(--accent-wash);color:var(--accent-ink)}
+.msg b{font-size:13.5px}.msg b small{font-weight:400;color:var(--muted);margin-left:6px}
+.composer{margin:10px 14px 14px;border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;min-height:92px;font-size:15px;line-height:1.55;transition:border-color .2s}
+.composer.focus{border-color:#c9c6bf}
+.composer .ph{color:var(--muted)}
+.composer mark{background:#ffd6c4;color:inherit;border-radius:3px;padding:1px 0}
+.composer .new{animation:flash 1.6s ease-out}
+@keyframes flash{from{background:#ffd6c4}to{background:transparent}}
+.caret{display:inline-block;width:2px;height:1.1em;background:var(--accent);vertical-align:-.18em;margin-left:1px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* the real app's listening bar, recreated */
+.pill{position:absolute;left:50%;bottom:18px;transform:translate(-50%,14px) scale(.97);opacity:0;transition:.24s cubic-bezier(.2,.8,.2,1);display:flex;align-items:center;gap:12px;padding:8px 18px 8px 10px;border-radius:99px;background:rgba(20,19,18,.9);color:#fff;box-shadow:0 12px 34px rgba(0,0,0,.3),inset 0 0 0 1px rgba(255,255,255,.1);backdrop-filter:blur(20px);white-space:nowrap;pointer-events:none;max-width:calc(100% - 28px);z-index:3}
+.pill.on{opacity:1;transform:translate(-50%,0) scale(1)}
+.pill .slot{width:34px;height:34px;display:grid;place-items:center;margin:-4px 0}
+.pill .lbl{font-size:14px;font-weight:500}
+.pill .sub{font-size:12.5px;color:rgba(255,255,255,.55)}
+.pill .chip{background:rgba(255,255,255,.12);padding:3px 10px;border-radius:99px;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;max-width:240px}
+.pill .chip.ctx{color:#ffc9b3}
+.wave{display:flex;align-items:center;gap:3px;height:24px}
+.wave i{width:3px;border-radius:2px;background:#fff;height:4px;transition:height .08s}
+.pill.ai .wave i{background:#d9c7ff}
+.bob .tally{animation:bob 1.6s ease-in-out infinite}
+.wig .tally{animation:wig .5s ease-in-out infinite}
+.pop .tally{animation:pop .45s cubic-bezier(.2,1.6,.4,1)}
+@keyframes bob{50%{translate:0 -2px}}
+@keyframes wig{0%,100%{rotate:-4deg}50%{rotate:4deg}}
+@keyframes pop{from{scale:.6}}
+
+.controls{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:22px;flex-wrap:wrap}
+.keycap{position:relative;min-width:132px;height:62px;padding:0 18px;border-radius:14px;background:linear-gradient(#fff,#f3f2ef);border:1px solid #d9d6cf;box-shadow:0 5px 0 #d4d1ca,0 8px 18px -6px rgba(0,0,0,.2);font-weight:700;font-size:17px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;user-select:none;-webkit-user-select:none;touch-action:none;transition:transform .06s,box-shadow .06s}
+.keycap small{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+.keycap.down{transform:translateY(4px);box-shadow:0 1px 0 #d4d1ca,0 3px 8px -4px rgba(0,0,0,.2)}
+.keycap.shift{min-width:96px}
+.keycap.shift.armed{background:linear-gradient(#f4eeff,#e9e0ff);border-color:#cbb9f5;box-shadow:0 5px 0 #c7b6ee,0 8px 18px -6px rgba(107,79,199,.35)}
+.keycap.shift.armed.down{box-shadow:0 1px 0 #c7b6ee}
+.plus{color:var(--muted);font-weight:600}
+.heard{margin-top:16px;text-align:center;font-size:13.5px;color:var(--muted);min-height:42px;line-height:1.5}
+.heard s{color:#c9a9a0}
+.heard b{color:var(--muted);font-weight:600}
+.demo-hint{text-align:center;font-size:13.5px;color:var(--muted);margin-top:14px}
+.floaty{position:absolute;right:-18px;top:-26px;z-index:4}
+@media (max-width:980px){.floaty{right:8px}}
+
+/* ---------- sections ---------- */
+section{padding:88px 0}
+.kicker{font-size:13.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:14px}
+h2{text-wrap:balance;font-size:clamp(2rem,4.2vw,3.3rem);line-height:1.02;letter-spacing:-.04em;font-weight:800;max-width:760px}
+h2 .soft{color:var(--faint)}
+.sec-lede{text-wrap:pretty;color:var(--muted);font-size:1.15rem;max-width:620px;margin-top:16px}
+
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:44px}
+@media (max-width:860px){.modes{grid-template-columns:1fr}}
+.mode{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:30px;position:relative}
+.mode h3{font-size:1.5rem;letter-spacing:-.025em;margin:18px 0 8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.mode p{color:var(--muted)}
+.keys{display:flex;gap:6px;align-items:center}
+.keys kbd{font-size:13px;padding:5px 10px;border-radius:8px}
+.eg{margin-top:22px;display:flex;flex-direction:column;gap:10px}
+.say{font-size:15px;padding:12px 14px;border-radius:14px 14px 14px 4px;background:var(--panel);color:var(--ink-2);max-width:92%}
+.say::before{content:"🎙 ";opacity:.8}
+.out{font-size:15px;padding:12px 14px;border-radius:14px 14px 4px 14px;background:var(--ink);color:#fff;align-self:flex-end;max-width:92%;white-space:pre-line}
+.mode.ai{background:linear-gradient(180deg,#faf7ff,#fff 40%)}
+.mode.ai .out{background:#2b1f4d}
+.ctxline{font-size:13px;color:var(--lilac-ink);font-weight:600;display:flex;gap:8px;align-items:center}
+.ctxline mark{background:#ffd6c4;padding:1px 4px;border-radius:3px;font-weight:500;color:var(--ink-2)}
+
+.apps{display:flex;flex-wrap:wrap;gap:10px;margin-top:34px}
+.apps span{padding:10px 16px;border-radius:99px;background:var(--surface);border:1px solid var(--line);font-weight:600;font-size:15px;color:var(--ink-2)}
+
+.privacy{background:var(--ink);color:#fff;border-radius:32px;padding:64px 56px;display:grid;grid-template-columns:1.1fr 1fr;gap:48px;align-items:center;position:relative}
+@media (max-width:860px){.privacy{grid-template-columns:1fr;padding:44px 26px;border-radius:24px}}
+.privacy h2 .soft{color:rgba(255,255,255,.45)}
+.privacy .sec-lede{color:rgba(255,255,255,.65)}
+.facts{display:flex;flex-direction:column}
+.fact{display:flex;gap:14px;padding:18px 0;border-top:1px solid rgba(255,255,255,.12)}
+.fact:first-child{border-top:0}
+.fact .ic{font-size:20px;line-height:1.3}
+.fact b{display:block;font-size:16px}
+.fact span{color:rgba(255,255,255,.62);font-size:14.5px;line-height:1.5}
+
+.tally-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:40px}
+@media (max-width:760px){.tally-row{grid-template-columns:repeat(2,1fr)}}
+.tr{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:26px 20px 20px;text-align:center}
+.tr .t{height:78px;display:grid;place-items:center}
+.tr b{display:block;margin-top:14px;font-size:15.5px}
+.tr span{color:var(--muted);font-size:14px}
+
+.faq{margin-top:36px;border-top:1px solid var(--line)}
+.faq details{border-bottom:1px solid var(--line);padding:4px 0}
+.faq summary{list-style:none;cursor:pointer;padding:18px 0;font-weight:600;font-size:1.08rem;display:flex;justify-content:space-between;gap:20px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font-weight:400;font-size:1.4rem;line-height:1;color:var(--faint);transition:transform .2s}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq p{color:var(--muted);padding:0 0 20px;max-width:720px}
+
+.final{text-align:center;padding:100px 0 110px}
+.final h2{margin:22px auto 0;max-width:720px}
+.final .cta{justify-content:center;margin-top:30px}
+
+footer{border-top:1px solid var(--line);padding:28px 0;font-size:14px;color:var(--muted)}
+footer .wrap{display:flex;gap:16px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+footer a{color:var(--muted);text-decoration:none}
+footer a:hover{color:var(--ink)}
+
+.js .reveal{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1)}
+.js .reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  .tally,.caret{animation:none!important}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="wrap">
+    <a class="brand" href="/"><span data-tally="30,hello,,-6,0"></span>Blurt</a>
+    <a class="by" href="https://soonbuilt.com" rel="noopener">by soonbuilt</a>
+    <span class="sp"></span>
+    <nav class="nav-links" aria-label="Page"><a href="#how">How it works</a><a href="#private">Privacy</a><a href="#faq">FAQ</a></nav>
+    <a class="btn btn-pri btn-sm" href="#download" data-dl-nav>Download</a>
+  </div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow"><i></i>Free for Mac &amp; Windows</span>
+      <h1>Hold a key.<br>Talk.<br><span class="soft">It's written.</span></h1>
+      <p class="lede">Blurt turns your voice into clean text wherever your cursor is. Add <kbd data-k="ai">⇧</kbd> and your voice becomes a prompt for AI, with whatever you've highlighted as context.</p>
+      <div class="cta" id="download" data-downloads></div>
+      <p class="cta-note" data-dl-note>Your voice is turned into text on your own computer. No account needed.</p>
+    </div>
+
+    <div class="stage-wrap">
+      <div class="floaty"><span data-tally="70,hello,,8"></span></div>
+      <div class="stage" id="stage">
+        <div class="win">
+          <div class="win-bar"><i></i><i></i><i></i><b>#launch-week</b></div>
+          <div class="msgs">
+            <div class="msg"><div class="av">SA</div><div><b>Sara <small>10:31</small></b><div id="incoming">Quick one: where are we on the landing page?</div></div></div>
+          </div>
+          <div class="composer" id="composer" aria-live="polite"><span class="ph">Message #launch-week</span></div>
+        </div>
+        <div class="pill" id="pill" aria-hidden="true"></div>
+      </div>
+      <div class="controls">
+        <button class="keycap" id="talkKey" aria-describedby="demoHint"><span data-k="talk">⌥</span><small data-k="talkSide">RIGHT OPTION</small></button>
+        <span class="plus">+</span>
+        <button class="keycap shift" id="shiftKey" aria-pressed="false"><span data-k="ai">⇧</span><small>FOR AI</small></button>
+      </div>
+      <p class="demo-hint" id="demoHint">Press and hold the key <span data-hint-kb>(or your real <kbd data-k="talk">⌥</kbd>)</span>. Tap <b>⇧ for AI</b> first to rewrite instead.</p>
+      <p class="heard" id="heard"></p>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <p class="kicker reveal">One key, two moves</p>
+    <h2 class="reveal">Talk to type. <span class="soft">Add a finger to ask AI.</span></h2>
+    <div class="modes">
+      <article class="mode reveal">
+        <span data-tally="54,listening,butter,-6"></span>
+        <h3>Dictate <span class="keys"><kbd data-k="talk">⌥</kbd></span></h3>
+        <p>Hold, talk, let go. Tally drops the ums, adds the punctuation and types it wherever your cursor is. Say “new line” for a line break.</p>
+        <div class="eg">
+          <div class="say">um so the copy is done and uh the video lands this afternoon new line thanks Sara</div>
+          <div class="out">The copy is done and the video lands this afternoon.
+Thanks Sara</div>
+        </div>
+      </article>
+      <article class="mode ai reveal">
+        <span data-tally="54,listening,lilac,5"></span>
+        <h3>Ask AI <span class="keys"><kbd data-k="talk">⌥</kbd><span class="plus">+</span><kbd data-k="ai">⇧</kbd></span></h3>
+        <p>Your words become the prompt. Write an email, answer a question, or highlight text first and it goes along as context. The result replaces your selection.</p>
+        <div class="eg">
+          <div class="ctxline">📎 Highlighted: <mark>we cant hit friday cause the api still isnt working</mark></div>
+          <div class="say">make this polite but firm</div>
+          <div class="out">Unfortunately we won't make Friday: we're still waiting on the API from your side. Happy to agree a new date together.</div>
+        </div>
+      </article>
+    </div>
+    <div class="apps reveal" aria-label="Works in">
+      <span>Slack</span><span>Gmail</span><span>Notion</span><span>VS Code</span><span>Cursor</span><span>ChatGPT</span><span>Word</span><span>Google Docs</span><span>WhatsApp</span><span>Linear</span><span>Figma</span><span>…anywhere you can type</span>
+    </div>
+  </div>
+</section>
+
+<section id="private">
+  <div class="wrap">
+    <div class="privacy reveal">
+      <div>
+        <p class="kicker" style="color:#ff9d78">Private by default</p>
+        <h2>Your voice never leaves your computer. <span class="soft">Not even to us.</span></h2>
+        <p class="sec-lede">Speech recognition runs on your own machine, fast enough that text appears the moment you let go. There's no account, no cloud transcript and nothing to cancel.</p>
+      </div>
+      <div class="facts">
+        <div class="fact"><span class="ic">🎙</span><div><b>On-device speech</b><span>A 670 MB voice model, downloaded once. English plus 24 European languages.</span></div></div>
+        <div class="fact"><span class="ic">✨</span><div><b>Apple Intelligence on Mac</b><span>Ask AI runs on Apple's on-device model, free and private, with nothing to set up.</span></div></div>
+        <div class="fact"><span class="ic">🔑</span><div><b>Or bring your own AI</b><span>Ollama on your computer, or your own Claude or OpenAI key, kept in your system keychain.</span></div></div>
+        <div class="fact"><span class="ic">👂</span><div><b>Only while you hold the key</b><span>The mic is off the rest of the time. Your system shows you exactly when it's on.</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="kicker reveal">Meet Tally</p>
+    <h2 class="reveal">The little note in your menu bar. <span class="soft">Always tells you what's going on.</span></h2>
+    <p class="sec-lede reveal">Tally is soonbuilt's buddy, in every app we make. In Blurt, one glance at Tally's face tells you whether it's listening, writing or done.</p>
+    <div class="tally-row">
+      <div class="tr reveal"><div class="t"><span data-tally="64,hello,peach,-6"></span></div><b>Ready</b><span>Waiting for your key</span></div>
+      <div class="tr reveal"><div class="t bob"><span data-tally="64,listening,butter,4"></span></div><b>Listening</b><span>While you hold it</span></div>
+      <div class="tr reveal"><div class="t wig"><span data-tally="64,working,lilac,-3"></span></div><b>Writing</b><span>A blink after you let go</span></div>
+      <div class="tr reveal"><div class="t"><span data-tally="64,ready,mint,5"></span></div><b>Done</b><span>Text is where you left it</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <p class="kicker reveal">Questions</p>
+    <h2 class="reveal">Good to know</h2>
+    <div class="faq reveal">
+      <details><summary>Is Blurt really free?</summary><p>Yes. Dictation runs on your computer, so it costs nothing to run and there's nothing to subscribe to. Ask AI is free with Apple Intelligence or Ollama. If you choose Claude or OpenAI instead, you pay them directly with your own key.</p></details>
+      <details><summary>Which key do I hold?</summary><p>Right <kbd>⌥ Option</kbd> on Mac and Right <kbd>Ctrl</kbd> on Windows, plus <kbd>Shift</kbd> to ask AI. You can pick a different key in Settings. Press <kbd>Esc</kbd> while holding to cancel.</p></details>
+      <details><summary>Does it work in every app?</summary><p>Anywhere you can type: chat apps, email, docs, code editors, browsers. Blurt pastes the text for you, then puts back whatever you had copied.</p></details>
+      <details><summary>What do I need?</summary><p>A Mac with macOS 13 or later (Apple silicon or Intel), or a Windows 10 or 11 PC, and about 1 GB of free space for the voice model. Apple Intelligence needs macOS 26 on a Mac that supports it.</p></details>
+      <details><summary>Which languages does it understand?</summary><p>English plus 24 European languages, including Spanish, French, German, Italian, Portuguese, Dutch and Polish.</p></details>
+      <details><summary>Why does macOS ask for Accessibility access?</summary><p>So Blurt can notice when you hold the talk key, read the text you've highlighted, and paste into the app you're using. Blurt doesn't record your screen or keystrokes.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <span data-tally="96,hello,,-6" class="reveal" style="display:inline-block"></span>
+    <h2 class="reveal">Stop typing everything. <span class="soft">Just blurt it out.</span></h2>
+    <div class="cta reveal" data-downloads></div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Blurt is made by <a href="https://soonbuilt.com">soonbuilt</a>, with Tally.</span>
+    <span><a href="https://soonbuilt.com/privacy">Privacy</a> · © 2026 soonbuilt</span>
+  </div>
+</footer>
+
+<script type="module" src="./main.js"></script>
+</body>
+</html>

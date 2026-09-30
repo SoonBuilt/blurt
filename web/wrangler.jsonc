@@ -1,0 +1,11 @@
+{
+  "$schema": "../../../node_modules/wrangler/config-schema.json",
+  // blurt.soonbuilt.com: Blurt's static website. Assets only, no Worker code.
+  "name": "blurt-site",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./public",
+    "not_found_handling": "404-page"
+  },
+  "routes": [{ "pattern": "blurt.soonbuilt.com", "custom_domain": true }]
+}
