@@ -3,11 +3,11 @@ import { renderAll, tally } from './tally.js';
 /* ---------- downloads ----------
  * Fill these in when a release is published (public downloads repo), and the buttons
  * switch from "coming soon" to real downloads. Nothing else needs to change. */
+const REPO = 'https://github.com/danishs360/blurt';
 const RELEASE = {
-  version: null, // e.g. '0.1.0'
-  mac: null, // universal or Apple silicon .dmg URL
-  macIntel: null, // Intel .dmg URL (optional)
-  windows: null, // .exe installer URL
+  version: '0.1.0',
+  mac: `${REPO}/releases/download/v0.1.0/Blurt_0.1.0_aarch64.dmg`,
+  windows: `${REPO}/releases/download/v0.1.0/Blurt_0.1.0_x64-setup.exe`,
 };
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -32,10 +32,11 @@ const WIN = '<svg class="os-ico" viewBox="0 0 24 24" fill="currentColor" aria-hi
 function dlButton(os, primary) {
   const url = os === 'mac' ? RELEASE.mac : RELEASE.windows;
   const name = os === 'mac' ? 'Mac' : 'Windows';
+  const note = os === 'mac' ? 'Apple Silicon' : '64-bit';
   const cls = `btn ${primary ? 'btn-pri' : 'btn-sec'}`;
   const icon = os === 'mac' ? APPLE : WIN;
   return url
-    ? `<a class="${cls}" href="${url}">${icon}Download for ${name}${RELEASE.version ? ` <small>v${RELEASE.version}</small>` : ''}</a>`
+    ? `<a class="${cls}" href="${url}">${icon}Download for ${name} <small>${note}</small></a>`
     : `<span class="${cls} soon" aria-disabled="true">${icon}${name} <small>coming soon</small></span>`;
 }
 const order = isWin ? ['windows', 'mac'] : ['mac', 'windows'];

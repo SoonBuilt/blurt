@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "sf mono",
+        "createdAt": "2026-09-30T19:08:59.724Z",
+        "reason": "Claude: a copy-paste command (ollama pull qwen3:4b-instruct) is shown in <code>; monospace is the correct typography for a literal command, and --mono is the system stack so the page works offline"
+      }
+    ]
+  }
+}
