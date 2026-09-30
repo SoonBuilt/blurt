@@ -168,35 +168,6 @@ export function VoiceModel({ status, refresh }: { status: Status; refresh: () =>
   );
 }
 
-export function TallyVoice({ status, refresh }: { status: Status; refresh: () => void }) {
-  const [playing, setPlaying] = useState(false);
-  return (
-    <PackCard
-      pack="voice"
-      title="Tally's voice"
-      blurb="Tally answers your questions out loud in a warm, gentle voice, made right on your computer."
-      size="132 MB"
-      ready={status.voiceReady}
-      refresh={refresh}
-    >
-      <button
-        className="btn"
-        disabled={playing}
-        onClick={async () => {
-          setPlaying(true);
-          try {
-            await api.speakSample();
-          } finally {
-            setTimeout(() => setPlaying(false), 4000);
-          }
-        }}
-      >
-        {playing ? "🔊 Speaking…" : "▶ Hear Tally"}
-      </button>
-    </PackCard>
-  );
-}
-
 export function ToneAwareness({ status, refresh }: { status: Status; refresh: () => void }) {
   return (
     <PackCard
@@ -345,23 +316,5 @@ export function AiEngine({ status, refresh }: { status: Status; refresh: () => v
         {test.state === "err" && <span className="err">{test.text}</span>}
       </div>
     </div>
-  );
-}
-
-export function PremiumVoice({ status, refresh }: { status: Status; refresh: () => void }) {
-  const save = useSettings(status, refresh);
-  const on = status.settings.voice.premium_voice;
-  return (
-    <PackCard
-      pack="premium"
-      title="Expressive voice (Pro preview)"
-      blurb="A richer, more human Tally that can laugh, chuckle and sigh (Chatterbox Turbo). English only, and it takes a moment longer to start talking."
-      size="470 MB"
-      ready={status.premiumReady}
-      refresh={refresh}
-    >
-      <span className="pro">PRO</span>
-      <Toggle label="Use the expressive voice" on={on} onChange={(v) => save((x) => ({ ...x, voice: { ...x.voice, premium_voice: v } }))} />
-    </PackCard>
   );
 }

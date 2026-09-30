@@ -36,25 +36,6 @@ body.hud-body {
   white-space: nowrap;
   animation: enter 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.pill.speaking {
-  white-space: normal;
-  border-radius: 22px;
-  align-items: flex-start;
-  padding: 12px 18px 12px 12px;
-}
-.said {
-  font-size: 14px;
-  line-height: 1.45;
-  max-width: 380px;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.sub.stop {
-  align-self: flex-end;
-  flex: none;
-}
 .chip.tone {
   color: #bfe8cc;
   flex: none;

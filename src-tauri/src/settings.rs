@@ -61,21 +61,17 @@ impl Default for AiSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct VoiceSettings {
-    /// Tally answers questions out loud instead of typing the answer.
-    pub read_answers: bool,
-    /// Tally also reads out text it wrote for you after inserting it.
-    pub read_everything: bool,
-    /// Listen to how you sound and let Ask AI adapt to it.
+    /// Listen to how you sound and let Ask AI adapt to it (needs the tone pack).
     pub tone_awareness: bool,
     /// Double-tap the talk key to talk without holding it.
     pub hands_free: bool,
-    /// Use the premium, more expressive voice (Chatterbox Turbo) when it's installed.
-    pub premium_voice: bool,
+    /// Ask AI remembers the last few exchanges for a few minutes (in memory only).
+    pub memory: bool,
 }
 
 impl Default for VoiceSettings {
     fn default() -> Self {
-        Self { read_answers: true, read_everything: false, tone_awareness: true, hands_free: true, premium_voice: false }
+        Self { tone_awareness: true, hands_free: true, memory: true }
     }
 }
 

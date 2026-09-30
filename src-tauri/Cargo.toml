@@ -43,15 +43,9 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"
 futures-util = "0.3"
 # API keys live in the OS keychain (macOS Keychain, Windows Credential Manager)
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
-sherpa-onnx = "=1.13.8"
-sherpa-onnx-sys = "=1.13.8"
+# Smart Turn (hands-free) and emotion2vec+ (tone) run on ONNX Runtime too
 ort = "=2.0.0-rc.12"
 rustfft = "6"
-bzip2 = "0.4"
-tar = "0.4"
-rodio = { version = "0.21", default-features = false, features = ["playback"] }
-hound = "3.5"
-tokenizers = { version = "0.23.2", default-features = false, features = ["fancy-regex"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.1" }

@@ -16,6 +16,34 @@ enum Chord {
     Paste,
 }
 
+/// How the text reached the user.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Delivered {
+    /// Typed into the focused app.
+    Pasted,
+    /// Only copied: macOS isn't letting Blurt type yet (Accessibility is off).
+    Copied,
+}
+
+/// Puts `text` into the focused app and, when `keep` is true, leaves it on the clipboard.
+/// Without Accessibility access it falls back to copying, so nothing is ever lost.
+pub fn deliver(app: &AppHandle, text: &str, keep: bool) -> anyhow::Result<Delivered> {
+    if !can_type() {
+        Clipboard::new()?.set_text(text.to_string())?;
+        return Ok(Delivered::Copied);
+    }
+    paste(app, text, !keep)?;
+    Ok(Delivered::Pasted)
+}
+
+/// Whether the OS lets Blurt send keystrokes to other apps.
+pub fn can_type() -> bool {
+    #[cfg(target_os = "macos")]
+    return handy_keys::check_accessibility();
+    #[cfg(not(target_os = "macos"))]
+    return true;
+}
+
 /// Pastes `text` into the focused app. With `restore`, the user's previous clipboard
 /// text comes back shortly after.
 pub fn paste(app: &AppHandle, text: &str, restore: bool) -> anyhow::Result<()> {

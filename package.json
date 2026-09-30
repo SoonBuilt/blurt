@@ -7,8 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "node scripts/fetch-native.mjs && tauri",
-    "native": "node scripts/fetch-native.mjs"
+    "tauri": "tauri"
   },
   "dependencies": {
     "@fontsource-variable/schibsted-grotesk": "^5.3.0",

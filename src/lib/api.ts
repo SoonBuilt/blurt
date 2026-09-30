@@ -9,9 +9,9 @@ const mock: Record<string, unknown> = {
       onboarded: new URLSearchParams(location.search).has("settings"),
       ai: { provider: "apple", ollama_url: "http://localhost:11434", ollama_model: "llama3.2:3b", anthropic_model: "claude-opus-5",
         openai_url: "https://api.openai.com/v1", openai_model: "gpt-5-mini", style: "" },
-      voice: { read_answers: true, read_everything: false, tone_awareness: true, hands_free: true, premium_voice: false },
+      voice: { tone_awareness: true, hands_free: true, memory: true },
     },
-    modelDownloaded: false, voiceReady: false, toneReady: false, premiumReady: false, accessibility: false, microphone: "unknown", appleAi: "", hasAnthropicKey: false, hasOpenaiKey: false,
+    modelDownloaded: false, toneReady: false, accessibility: false, microphone: "unknown", appleAi: "", hasAnthropicKey: false, hasOpenaiKey: false,
   },
   test_ai: "Hey there, lovely to meet you!",
 };
@@ -34,14 +34,12 @@ export type AiSettings = {
 };
 
 export type VoiceSettings = {
-  read_answers: boolean;
-  read_everything: boolean;
   tone_awareness: boolean;
   hands_free: boolean;
-  premium_voice: boolean;
+  memory: boolean;
 };
 
-export type Pack = "speech" | "voice" | "tone" | "premium";
+export type Pack = "speech" | "tone";
 
 export type Settings = {
   talk_key: string;
@@ -58,9 +56,7 @@ export type Status = {
   platform: "macos" | "windows" | "linux";
   settings: Settings;
   modelDownloaded: boolean;
-  voiceReady: boolean;
   toneReady: boolean;
-  premiumReady: boolean;
   accessibility: boolean;
   microphone: "allowed" | "denied" | "restricted" | "unknown";
   appleAi: string;
@@ -72,7 +68,6 @@ export const api = {
   status: () => invoke<Status>("get_status"),
   saveSettings: (settings: Settings) => invoke<void>("save_settings", { settings }),
   downloadPack: (pack: Pack) => invoke<void>("download_pack", { pack }),
-  speakSample: () => invoke<void>("speak_sample"),
   setApiKey: (provider: AiProvider, key: string) => invoke<void>("set_api_key", { provider, key }),
   testAi: () => invoke<string>("test_ai"),
   requestMicrophone: () => invoke<boolean>("request_microphone"),

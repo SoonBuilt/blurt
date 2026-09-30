@@ -9,14 +9,12 @@ becomes a prompt for AI, with anything you've highlighted as context. By soonbui
 | Speech to text | Parakeet TDT 0.6B v3, on-device | same |
 | Ask AI | Apple Intelligence (on-device), Ollama, Claude or OpenAI-compatible | Ollama, Claude or OpenAI-compatible |
 | Listening bar | non-activating NSPanel, floats over full-screen apps | always-on-top, non-focusable window |
-| Tally's voice | Kokoro-82M `af_heart`, slowed to 0.89x (Apache-2.0) | same |
-| Expressive voice (Pro preview) | Chatterbox Turbo 4-bit (Resemble AI, MIT), conditioned on Heart | same |
 | Tone awareness | emotion2vec+ base | same |
 | Hands-free | double-tap the talk key; Smart Turn v3.2 ends the turn | same |
 
-All models run on the user's computer through **one** ONNX Runtime: sherpa-onnx's static
-build (fetched by `pnpm native`, or automatically by `pnpm tauri`), which `ort` links against
-too. Optional models are downloadable packs (`src-tauri/src/models.rs`).
+Everything runs on the user's computer. Optional models are downloadable packs
+(`src-tauri/src/models.rs`). Ask AI keeps a short-term memory of the last few exchanges
+(10 minutes, in RAM only).
 
 ## Develop
 
@@ -29,7 +27,6 @@ Needs Rust, Node 24 and pnpm. On macOS, full Xcode (for the Swift bridge in
 `src-tauri/swift/`). The voice model (~670 MB) downloads on first run into the app data folder.
 
 - Speech pipeline without the UI: `cd src-tauri && cargo run --example transcribe -- <data-dir> <file.wav>`
-- Voice layer: `cargo run --release --example voice_check -- <data-dir> <angry.wav> <finished.wav>` and `--example premium_check -- <data-dir>`
 - UI design review in a browser: `pnpm dev` and open http://localhost:1420 (sample data, `?settings` for Settings)
 - Tests: `cd src-tauri && cargo test --lib`
 
@@ -51,8 +48,7 @@ every push, and drafts a GitHub release for `blurt-v*` tags. Builds are unsigned
 ## Credits
 
 Speech: NVIDIA Parakeet TDT 0.6B v3 (CC BY 4.0) via ONNX Runtime and transcribe-rs.
-Voice: Kokoro-82M by hexgrad (Apache-2.0), voice af_heart; Resemble AI Chatterbox Turbo (MIT). Tone: emotion2vec+ (Ma et al., ACL 2024; FunASR model licence, attribution
-required). Turn detection: Pipecat Smart Turn v3.2 (BSD-2). Runtime: sherpa-onnx (Apache-2.0).
+required). Turn detection: Pipecat Smart Turn v3.2 (BSD-2).
 Hotkeys (handy-keys) and several platform approaches come from Handy (MIT).
 
 ## Website (blurt.soonbuilt.com)

@@ -20,8 +20,6 @@ pub enum HudState {
     Listening { ai: bool, context_words: usize, hands_free: bool },
     Transcribing { ai: bool },
     Thinking { instruction: String, context_words: usize, tone: Option<crate::voice::tone::Tone> },
-    /// Tally is saying `text` out loud.
-    Speaking { text: String },
     Done { message: String },
     Error { message: String },
 }

@@ -2,12 +2,12 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { useState } from "react";
 import { keyLabels, type DictationStyle, type Status } from "../lib/api";
 import { Tally } from "../tally/Tally";
-import { AiEngine, Permissions, PremiumVoice, ToneAwareness, Toggle, TallyVoice, useSettings, VoiceModel } from "./parts";
+import { AiEngine, Permissions, ToneAwareness, Toggle, useSettings, VoiceModel } from "./parts";
 
 const PAGES = [
   { id: "general", label: "General", icon: "⚙️" },
   { id: "voice", label: "Voice", icon: "🎙" },
-  { id: "tally", label: "Talk with Tally", icon: "🗣" },
+  { id: "smarts", label: "Smarts", icon: "🧠" },
   { id: "ai", label: "AI engine", icon: "✨" },
   { id: "about", label: "About", icon: "👋" },
 ] as const;
@@ -132,30 +132,16 @@ export default function SettingsView({ status, refresh }: { status: Status; refr
           </>
         )}
 
-        {page === "tally" && (
+        {page === "smarts" && (
           <>
             <div className="buddy small">
-              <Tally size={48} mood="listening" paper="lilac" tilt={-5} />
+              <Tally size={48} mood="pointing" paper="lilac" tilt={-5} />
               <div className="bubble">
-                Ask me something with <kbd>{keys.talk}</kbd> + <kbd>{keys.ai}</kbd> and I'll answer out loud. Double-tap <kbd>{keys.talk}</kbd> to talk without holding it.
+                A few small things that make me quicker to work with. Everything stays on your {mac ? "Mac" : "PC"}.
               </div>
             </div>
-            <h2>Talk with Tally</h2>
+            <h2>Smarts</h2>
             <div className="group">
-              <div className="row">
-                <span className="t">
-                  <b>Answer questions out loud</b>
-                  <span>When you ask Tally something, it talks back instead of typing the answer. Press any key or Esc to stop it.</span>
-                </span>
-                <Toggle label="Answer out loud" on={s.voice.read_answers} onChange={(v) => save((x) => ({ ...x, voice: { ...x.voice, read_answers: v } }))} />
-              </div>
-              <div className="row">
-                <span className="t">
-                  <b>Also read out what it writes</b>
-                  <span>After inserting an email or rewrite, Tally reads it to you.</span>
-                </span>
-                <Toggle label="Read out writing" on={s.voice.read_everything} onChange={(v) => save((x) => ({ ...x, voice: { ...x.voice, read_everything: v } }))} />
-              </div>
               <div className="row">
                 <span className="t">
                   <b>Hands-free</b>
@@ -167,14 +153,21 @@ export default function SettingsView({ status, refresh }: { status: Status; refr
               </div>
               <div className="row">
                 <span className="t">
+                  <b>Short-term memory</b>
+                  <span>
+                    Ask AI remembers your last few requests for 10 minutes, so “make it shorter” or “now in Spanish” just works. Never saved to disk.
+                  </span>
+                </span>
+                <Toggle label="Short-term memory" on={s.voice.memory} onChange={(v) => save((x) => ({ ...x, voice: { ...x.voice, memory: v } }))} />
+              </div>
+              <div className="row">
+                <span className="t">
                   <b>Notice my tone</b>
-                  <span>If you sound stressed or annoyed, Tally stays calm and kind. It never comments on it unless you ask.</span>
+                  <span>If you sound stressed or annoyed, Ask AI keeps its wording calm and kind. Needs the small tone download below.</span>
                 </span>
                 <Toggle label="Notice my tone" on={s.voice.tone_awareness} onChange={(v) => save((x) => ({ ...x, voice: { ...x.voice, tone_awareness: v } }))} />
               </div>
             </div>
-            <TallyVoice status={status} refresh={refresh} />
-            <PremiumVoice status={status} refresh={refresh} />
             <ToneAwareness status={status} refresh={refresh} />
           </>
         )}
@@ -205,9 +198,8 @@ export default function SettingsView({ status, refresh }: { status: Status; refr
               </button>
             </div>
             <p className="credits">
-              Speech recognition: NVIDIA Parakeet TDT 0.6B v3 (CC BY 4.0). Tally's voice: Kokoro-82M by hexgrad (Apache-2.0), voice af_heart; expressive voice: Chatterbox
-              Turbo by Resemble AI (MIT). Tone: emotion2vec+ by Ma et al. (FunASR model licence). Turn detection: Pipecat Smart Turn v3.2 (BSD-2). Runs on ONNX
-              Runtime via sherpa-onnx (Apache-2.0). Hotkeys and model plumbing build on Handy (MIT). Version 0.1.0.
+              Speech recognition: NVIDIA Parakeet TDT 0.6B v3 (CC BY 4.0). Tone: emotion2vec+ by Ma et al. (FunASR model licence). Turn detection: Pipecat Smart Turn v3.2 (BSD-2). Runs on ONNX
+              Runtime. Hotkeys and model plumbing build on Handy (MIT). Version 0.1.0.
             </p>
           </div>
         )}

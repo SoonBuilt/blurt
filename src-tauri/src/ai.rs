@@ -7,17 +7,16 @@ use std::time::Duration;
 const KEYCHAIN_SERVICE: &str = "com.soonbuilt.blurt";
 
 const ASK_SYSTEM: &str = "You are Tally, the helper inside Blurt, which the user talks to from any app on their computer. \
-They held a key and spoke to you. There are two kinds of request. \
-1) WRITE: they want text written or changed (an email, a reply, a rewrite, a list). Your reply is typed straight into \
-the app they're using. If CONTEXT is given, it's text they highlighted: apply the instruction to it and reply with \
-only the new text, which will replace the highlight. \
-2) ANSWER: they're asking you something or chatting (a question, an opinion on the highlighted text, \"what does this \
-mean\", \"is this too rude\"). Start your reply with the exact marker [SAY] and answer the way a friendly, clever \
-friend would out loud: short (one to three sentences), natural spoken language, no lists or formatting. \
-For WRITE, reply with the final text only: no preamble, no quotes around it, no notes about what you changed. \
+They held a key and spoke an instruction; your reply is typed straight into the app they're using and copied to \
+their clipboard. If CONTEXT is given, it's text they highlighted: apply the instruction to it and reply with only \
+the new text, which will replace the highlight. If there's no context: when they ask you to write something, write \
+it; when they ask a question, answer it briefly. \
+Reply with the final text only: no preamble, no quotes around it, no notes about what you changed. \
 Use plain text, and only use lists or line breaks when the instruction calls for them. \
 Keep the language of the context, or of the instruction when there's no context. \
-The instruction came from speech recognition, so read past small transcription mistakes.";
+The instruction came from speech recognition, so read past small transcription mistakes. \
+If RECENT is given, it's what you and the user did in the last few minutes: use it to understand follow-ups like \
+\"make it shorter\" or \"now in Spanish\", but ignore it when the new instruction is unrelated.";
 
 const POLISH_SYSTEM: &str = "You tidy up dictated text. Rewrite the user's dictation into clear, well-punctuated writing \
 that keeps their meaning, tone and wording as much as possible. Fix obvious speech-recognition mistakes, remove \
@@ -50,46 +49,31 @@ pub fn set_api_key(provider: AiProvider, key: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// What Tally came back with.
-pub struct Reply {
-    pub text: String,
-    /// An answer to say out loud, rather than text to insert.
-    pub spoken: bool,
-}
-
 /// Runs a spoken instruction, optionally against highlighted text. `tone` is how the user
-/// sounded, when Blurt could tell.
+/// sounded, when Blurt could tell; `recent` is short-term memory of the last few exchanges.
 pub async fn ask(
     s: &AiSettings,
     instruction: &str,
     context: Option<&str>,
     tone: Option<crate::voice::tone::Tone>,
-    expressive: bool,
-) -> anyhow::Result<Reply> {
-    let mut user = match context {
-        Some(c) => format!("INSTRUCTION: {instruction}\n\nCONTEXT:\n{c}"),
-        None => format!("INSTRUCTION: {instruction}"),
-    };
+    recent: Option<&str>,
+) -> anyhow::Result<String> {
+    let mut user = String::new();
+    if let Some(r) = recent {
+        user.push_str(&format!("RECENT (oldest first):\n{r}\n\n"));
+    }
+    user.push_str(&format!("INSTRUCTION: {instruction}"));
+    if let Some(c) = context {
+        user.push_str(&format!("\n\nCONTEXT:\n{c}"));
+    }
     if let Some(t) = tone {
         user.push_str(&format!(
-            "\n\nTONE: the user sounded {} as they said this. Let it shape how you respond (calm and kind if they're \
-             frustrated, down or stressed; match their energy if they're upbeat), but don't mention it unless they ask.",
+            "\n\nTONE: the user sounded {} as they said this. Let it shape your wording (calm and kind if they're \
+             frustrated, down or stressed; match their energy if they're upbeat), but don't mention it.",
             t.describe()
         ));
     }
-    let mut system = system_with_style(ASK_SYSTEM, s);
-    if expressive {
-        system.push_str(
-            "\n\nYour spoken ANSWER replies are voiced by an expressive voice. Where it genuinely fits, you may include \
-             one performance tag such as [laugh], [chuckle] or [sigh] inline. Never use tags in WRITE replies.",
-        );
-    }
-    let out = complete(s, &system, &user).await?;
-    let trimmed = out.trim_start();
-    Ok(match trimmed.strip_prefix("[SAY]") {
-        Some(rest) => Reply { text: rest.trim().to_string(), spoken: true },
-        None => Reply { text: out, spoken: false },
-    })
+    complete(s, &system_with_style(ASK_SYSTEM, s), &user).await
 }
 
 /// Tidies dictation into good writing (the "Polished" dictation style).

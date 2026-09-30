@@ -7,7 +7,6 @@ type HudState =
   | { state: "listening"; ai: boolean; contextWords: number; handsFree: boolean }
   | { state: "transcribing"; ai: boolean }
   | { state: "thinking"; instruction: string; contextWords: number; tone: Tone | null }
-  | { state: "speaking"; text: string }
   | { state: "done"; message: string }
   | { state: "error"; message: string };
 
@@ -29,7 +28,6 @@ export default function Hud() {
   const [levels, setLevels] = useState<number[]>(() => Array(BARS).fill(0));
   const [seconds, setSeconds] = useState(0);
   const startedAt = useRef(0);
-  const [mouth, setMouth] = useState(false);
 
   useEffect(() => {
     const offState = listen<HudState>("hud", (e) => {
@@ -54,13 +52,6 @@ export default function Hud() {
   useEffect(() => {
     if (s.state !== "listening") return;
     const t = setInterval(() => setSeconds(Math.floor((Date.now() - startedAt.current) / 1000)), 250);
-    return () => clearInterval(t);
-  }, [s.state]);
-
-  // Tally "talks" by switching between its open-mouth and smiling faces.
-  useEffect(() => {
-    if (s.state !== "speaking") return;
-    const t = setInterval(() => setMouth((m) => !m), 170);
     return () => clearInterval(t);
   }, [s.state]);
 
@@ -107,16 +98,6 @@ export default function Hud() {
           <span className="chip" title={s.instruction}>“{s.instruction}”</span>
           {s.contextWords > 0 && <span className="chip ctx">📎 {s.contextWords} words</span>}
           {s.tone && <span className="chip tone">{TONE_CHIP[s.tone]}</span>}
-        </>
-      );
-      break;
-    case "speaking":
-      mood = mouth ? "ready" : "hello";
-      paper = "mint";
-      body = (
-        <>
-          <span className="said">{s.text}</span>
-          <span className="sub stop">Esc to stop</span>
         </>
       );
       break;

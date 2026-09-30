@@ -1,7 +1,8 @@
-//! The coordinator: key presses in, text (or Tally's voice) out.
+//! The coordinator: key presses in, text out.
 //!
 //! hold key → record → release → transcribe (+ hear the tone) → dictate: clean up and paste
-//! | ask AI: run the prompt with any highlighted text as context → paste it, or say it aloud.
+//! | ask AI: run the prompt with any highlighted text as context and a short-term memory of
+//! the last few exchanges → paste it and leave it on the clipboard.
 //! Hands-free: double-tap, talk, and Smart Turn decides when you've finished.
 
 use crate::hud::{self, HudState};
@@ -9,8 +10,9 @@ use crate::keys::{KeyAction, Mode};
 use crate::models::{self, Pack};
 use crate::settings::{DictationStyle, Settings};
 use crate::tray::{self, Mood};
-use crate::voice::{speaker::Speaker, tone::ToneDetector, turn};
-use crate::{ai, audio::Recorder, insert, stt::Transcriber, text};
+use crate::memory::Memory;
+use crate::voice::{tone::ToneDetector, turn};
+use crate::{ai, audio::Recorder, insert, insert::Delivered, stt::Transcriber, text};
 use parking_lot::{Mutex, RwLock};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -30,7 +32,7 @@ pub struct Engine {
     pub config_dir: PathBuf,
     pub settings: RwLock<Settings>,
     pub stt: Transcriber,
-    pub speaker: Speaker,
+    pub memory: Memory,
     tone: ToneDetector,
     turn: turn::TurnDetector,
     recorder: Recorder,
@@ -46,15 +48,13 @@ impl Engine {
         let settings = crate::settings::load(&config_dir);
         let level_app = app.clone();
         let recorder = Recorder::spawn(move |l| hud::level(&level_app, l));
-        let speaker = Speaker::spawn(data_dir.clone());
-        speaker.set_premium(settings.voice.premium_voice);
         Arc::new(Self {
             app,
             data_dir,
             config_dir,
             settings: RwLock::new(settings),
             stt: Transcriber::new(),
-            speaker,
+            memory: Memory::new(),
             tone: ToneDetector::new(),
             turn: turn::TurnDetector::new(),
             recorder,
@@ -78,9 +78,6 @@ impl Engine {
                     log::error!("{e:#}");
                 }
             }
-            if Speaker::is_ready(&me.data_dir) {
-                me.speaker.warm();
-            }
             if me.settings.read().voice.tone_awareness {
                 me.tone.warm(&me.data_dir);
             }
@@ -102,8 +99,6 @@ impl Engine {
                     self.recorder.cancel();
                     hud::set(&self.app, HudState::Hidden);
                     tray::set_mood(&self.app, Mood::Hello);
-                } else if self.speaker.is_speaking() {
-                    self.speaker.stop();
                 }
             }
             KeyAction::Stop => self.stop_recording(),
@@ -118,8 +113,6 @@ impl Engine {
     }
 
     fn start(self: &Arc<Self>, mode: Mode, hands_free: bool) {
-        // Talking over Tally interrupts it.
-        self.speaker.stop();
         if self.busy.load(Ordering::SeqCst) {
             return; // still writing the last one
         }
@@ -202,14 +195,15 @@ impl Engine {
         match result {
             Ok(Outcome::Done(message)) => {
                 tray::set_mood(&self.app, Mood::Ready);
+                // The "copied, press ⌘V" note needs time to be read.
+                let linger = if message.starts_with("Copied") { 3500 } else { 1100 };
                 hud::set(&self.app, HudState::Done { message });
-                std::thread::sleep(Duration::from_millis(1100));
-                if !self.speaker.is_speaking() && !self.is_recording() {
+                std::thread::sleep(Duration::from_millis(linger));
+                if !self.is_recording() {
                     hud::set(&self.app, HudState::Hidden);
                     tray::set_mood(&self.app, Mood::Hello);
                 }
             }
-            Ok(Outcome::Speaking) => {}
             Ok(Outcome::Nothing) => {
                 hud::set(&self.app, HudState::Hidden);
                 tray::set_mood(&self.app, Mood::Hello);
@@ -253,9 +247,12 @@ impl Engine {
                     tauri::async_runtime::block_on(ai::polish(&settings.ai, &cleaned)).unwrap_or(cleaned)
                 }
             };
-            insert::paste(&self.app, &output, settings.restore_clipboard)?;
+            let delivered = insert::deliver(&self.app, &output, !settings.restore_clipboard)?;
             let words = output.split_whitespace().count();
-            return Ok(Outcome::Done(format!("{words} word{}", if words == 1 { "" } else { "s" })));
+            return Ok(Outcome::Done(match delivered {
+                Delivered::Pasted => format!("{words} word{}", if words == 1 { "" } else { "s" }),
+                Delivered::Copied => copied_hint(),
+            }));
         }
 
         let instruction = text::clean(&raw);
@@ -263,35 +260,16 @@ impl Engine {
         let context = insert::selected_text(&self.app);
         let words = context.as_deref().map(|c| c.split_whitespace().count()).unwrap_or(0);
         hud::set(&self.app, HudState::Thinking { instruction: instruction.clone(), context_words: words, tone });
-        let expressive = settings.voice.premium_voice && crate::voice::premium::Premium::is_ready(&self.data_dir);
-        let reply = tauri::async_runtime::block_on(ai::ask(&settings.ai, &instruction, context.as_deref(), tone, expressive))?;
-
-        let can_speak = settings.voice.read_answers && Speaker::is_ready(&self.data_dir);
-        if reply.spoken && can_speak {
-            self.say(&reply.text);
-            return Ok(Outcome::Speaking);
+        let recent = settings.voice.memory.then(|| self.memory.recall()).flatten();
+        let reply = tauri::async_runtime::block_on(ai::ask(&settings.ai, &instruction, context.as_deref(), tone, recent.as_deref()))?;
+        if settings.voice.memory {
+            self.memory.remember(&instruction, &reply);
         }
-        insert::paste(&self.app, &reply.text, settings.restore_clipboard)?;
-        if settings.voice.read_everything && can_speak {
-            self.say(&reply.text);
-            return Ok(Outcome::Speaking);
-        }
-        Ok(Outcome::Done("Done".into()))
-    }
-
-    /// Tally says `text` out loud, showing it in the listening bar while it talks.
-    fn say(self: &Arc<Self>, text: &str) {
-        tray::set_mood(&self.app, Mood::Ready);
-        hud::set(&self.app, HudState::Speaking { text: crate::voice::speaker::strip_tags(text) });
-        let me = self.clone();
-        self.speaker.say(text, move || {
-            // Leave the words up a moment after the voice ends, unless something new started.
-            std::thread::sleep(Duration::from_millis(600));
-            if !me.is_recording() && !me.busy.load(Ordering::SeqCst) && !me.speaker.is_speaking() {
-                hud::set(&me.app, HudState::Hidden);
-                tray::set_mood(&me.app, Mood::Hello);
-            }
-        });
+        // AI results are typed in and stay on the clipboard, so they're never lost.
+        Ok(Outcome::Done(match insert::deliver(&self.app, &reply, true)? {
+            Delivered::Pasted => "Done · also on your clipboard".into(),
+            Delivered::Copied => copied_hint(),
+        }))
     }
 
     fn flash_error(&self, message: &str) {
@@ -308,6 +286,10 @@ impl Engine {
 
 enum Outcome {
     Done(String),
-    Speaking,
     Nothing,
+}
+
+fn copied_hint() -> String {
+    let key = if cfg!(target_os = "macos") { "⌘V" } else { "Ctrl+V" };
+    format!("Copied · press {key} (turn on Accessibility to paste for you)")
 }
