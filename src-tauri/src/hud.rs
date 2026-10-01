@@ -38,12 +38,19 @@ tauri_nspanel::tauri_panel! {
     })
 }
 
+/// The webview caches by URL and the bundle id is the same in every release, so a bare
+/// "hud.html" can be served out of the previous version's cache. The version makes each
+/// release a URL the cache has never seen. See the same trick for the main window.
+fn entry(app: &AppHandle) -> WebviewUrl {
+    WebviewUrl::App(format!("hud.html?v={}", app.package_info().version).into())
+}
+
 pub fn create(app: &AppHandle) -> tauri::Result<()> {
     #[cfg(target_os = "macos")]
     {
         use tauri_nspanel::{CollectionBehavior, PanelBuilder, PanelLevel, StyleMask};
         let panel = PanelBuilder::<_, HudPanel>::new(app, LABEL)
-            .url(WebviewUrl::App("hud.html".into()))
+            .url(entry(app))
             .title("Blurt")
             .level(PanelLevel::Status)
             .size(tauri::Size::Logical(tauri::LogicalSize {
@@ -68,7 +75,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
     }
     #[cfg(not(target_os = "macos"))]
     {
-        let w = tauri::WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("hud.html".into()))
+        let w = tauri::WebviewWindowBuilder::new(app, LABEL, entry(app))
             .title("Blurt")
             .inner_size(WIDTH, HEIGHT)
             .resizable(false)

@@ -20,7 +20,7 @@ use engine::Engine;
 use serde::Serialize;
 use settings::{AiProvider, Settings};
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WindowEvent};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -243,6 +243,21 @@ pub fn run() {
             let config_dir = app.path().app_config_dir()?;
             let engine = Engine::new(handle.clone(), data_dir, config_dir);
             app.manage(engine.clone());
+
+            // Built here rather than declared in tauri.conf.json so the version can go on
+            // the URL. Without it the webview happily serves the last release's cached
+            // interface on top of the new Rust, and nothing on screen explains why.
+            tauri::WebviewWindowBuilder::new(
+                app,
+                "main",
+                WebviewUrl::App(format!("index.html?v={}", app.package_info().version).into()),
+            )
+            .title("Blurt")
+            .inner_size(860.0, 620.0)
+            .min_inner_size(720.0, 520.0)
+            .visible(false)
+            .center()
+            .build()?;
 
             hud::create(&handle)?;
             tray::create(&handle)?;
