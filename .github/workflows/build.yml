@@ -67,6 +67,24 @@ jobs:
           releaseName: ${{ startsWith(github.ref, 'refs/tags/v') && format('Blurt {0}', github.ref_name) || '' }}
           releaseDraft: true
 
+      # The Store copy: Blurt's own files, taken out of the MSI and wrapped as an .msix that the
+      # Microsoft Store signs. Upload it in Partner Center (Blurt - Voice Typing > Packages).
+      - name: Build Microsoft Store package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem src-tauri\target\release\bundle\msi\*.msi | Select-Object -First 1
+          $x = Join-Path $env:RUNNER_TEMP "blurt-msi"
+          $p = Start-Process msiexec -ArgumentList "/a `"$($msi.FullName)`" /qn TARGETDIR=`"$x`"" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "msiexec /a failed ($($p.ExitCode))" }
+          $exe = Get-ChildItem $x -Recurse -Filter Blurt.exe | Select-Object -First 1
+          $v = (Get-Content src-tauri\tauri.conf.json -Raw | ConvertFrom-Json).version
+          ./store/make-msix.ps1 -AppDir $exe.DirectoryName -Exe $exe.Name `
+            -Name Soonbuilt.Blurt-VoiceTyping -DisplayName "Blurt - Voice Typing" `
+            -Description "Hold a key and talk. Blurt types what you say wherever your cursor is." `
+            -Version $v -Logo src-tauri\icons\icon.png -Microphone `
+            -Out "src-tauri\target\release\bundle\msix\Blurt-$v-store.msix"
+
       - name: Keep installers as build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -75,4 +93,5 @@ jobs:
             src-tauri/target/**/release/bundle/dmg/*.dmg
             src-tauri/target/**/release/bundle/nsis/*.exe
             src-tauri/target/**/release/bundle/msi/*.msi
+            src-tauri/target/**/release/bundle/msix/*.msix
           if-no-files-found: error
